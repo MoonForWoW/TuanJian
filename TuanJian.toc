@@ -1,0 +1,51 @@
+## Interface: 20506, 30405, 38002, 50504, 50505, 50506, 120000
+## Title: <TuanJian> |cff00BFFF团减助手|r
+## Notes: 插件命令：/TuanJian或/TJ
+## IconTexture: Interface\AddOns\TuanJian\Media\icon\icon.tga
+## Author: 苍穹之霜
+## SavedVariables: TuanJian
+## Version: 2.0.0
+
+Templates.xml
+Libs\embeds.xml
+Locales\zhCN.lua 
+Locales\zhTW.lua 
+Locales\enUS.lua
+Init.lua
+DB.lua
+function.lua
+Raid\DS\embeds.xml
+Raid\FL\embeds.xml
+Raid\ICC\embeds.xml
+Raid\MCtitan\embeds.xml
+Raid\MSV\embeds.xml
+Raid\NAXXtitan\embeds.xml
+Raid\SSCtitan\embeds.xml
+Raid\TOC\embeds.xml
+Raid\TOT\embeds.xml
+Raid\ZUGtitan\embeds.xml
+Raid\SWtitan\embeds.xml
+Raid\SOO\embeds.xml
+Raid\spell.lua
+Raid\Resistance.lua
+Raid\RaidFunc.lua
+Raid\CombatLog.lua
+Raid\Map.lua
+Raid\CombatFrame.lua
+Raid\CombatFrame_tooltip.lua
+Raid\Dispel.lua
+Raid\Board.lua
+Raid\BoardWA.lua
+exportMap.lua
+options.lua
+TuanJian.lua
+RaidTarget.lua
+TJ_WLK.lua
+TJ_MOP.lua
+TJ_MRT.lua
+GJ.lua
+DPS.lua
+Buff.lua
+SS.lua
+Equip.lua
+minimap.lua

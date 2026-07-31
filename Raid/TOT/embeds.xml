@@ -1,0 +1,15 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="Raid\TOT\1.lua"/>
+    <Script file="Raid\TOT\2.lua"/>
+    <Script file="Raid\TOT\3.lua"/>
+    <Script file="Raid\TOT\4.lua"/>
+    <Script file="Raid\TOT\5.lua"/>
+    <Script file="Raid\TOT\6.lua"/>
+    <Script file="Raid\TOT\7.lua"/>
+    <Script file="Raid\TOT\8.lua"/>
+    <Script file="Raid\TOT\9.lua"/>
+    <Script file="Raid\TOT\10.lua"/>
+    <Script file="Raid\TOT\11.lua"/>
+    <Script file="Raid\TOT\12.lua"/>
+    <Script file="Raid\TOT\13.lua"/>
+</Ui>

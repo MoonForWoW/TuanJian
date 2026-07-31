@@ -1,0 +1,5 @@
+<Bindings>
+    <Binding name="TUANJIAN" Category="BINDING_HEADER_TUANJIAN">
+        TJ.MainFrame:SetShown(not TJ.MainFrame:IsVisible())
+    </Binding>
+</Bindings>

@@ -1,0 +1,15 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="Raid\ICC\1.lua"/>
+    <Script file="Raid\ICC\2.lua"/>
+    <Script file="Raid\ICC\3.lua"/>
+    <Script file="Raid\ICC\4.lua"/>
+    <Script file="Raid\ICC\5.lua"/>
+    <Script file="Raid\ICC\6.lua"/>
+    <Script file="Raid\ICC\7.lua"/>
+    <Script file="Raid\ICC\8.lua"/>
+    <Script file="Raid\ICC\9.lua"/>
+    <Script file="Raid\ICC\10.lua"/>
+    <Script file="Raid\ICC\11.lua"/>
+    <Script file="Raid\ICC\12.lua"/>
+    <Script file="Raid\ICC\13.lua"/>
+</Ui>

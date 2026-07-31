@@ -1,0 +1,9 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="Raid\FL\1.lua"/>
+    <Script file="Raid\FL\2.lua"/>
+    <Script file="Raid\FL\3.lua"/>
+    <Script file="Raid\FL\4.lua"/>
+    <Script file="Raid\FL\5.lua"/>
+    <Script file="Raid\FL\6.lua"/>
+    <Script file="Raid\FL\7.lua"/>
+</Ui>

@@ -1,0 +1,611 @@
+local AddonName, ns = ...
+
+local LibBG = ns.LibBG
+local L = ns.L
+
+local AddTexture = ns.AddTexture
+
+local pt = print
+local After = C_Timer.After
+local BG = TJ
+
+local realmID = GetRealmID()
+local player = UnitName("player")
+
+
+local T = {}
+local FB = "SOO"
+local bossIndex = 14
+--[[
+"DEATHKNIGHT"
+"PALADIN"
+"WARRIOR"
+"SHAMAN"
+"HUNTER"
+"DRUID"
+"ROGUE"
+"MAGE"
+"WARLOCK"
+"PRIEST"
+ ]]
+
+TJ.Load[FB .. bossIndex] = function()
+    -- local mainFrame = TJ.frame[FB][bossIndex]
+
+    -- mainFrame.saveAura = {
+    --     [145065] = true, -- 亚煞极之触
+    --     [145171] = true, -- 强化亚煞极之触
+    --     [145183] = true, -- 绝望之握
+    --     [145195] = true, -- 强化绝望之握
+    --     [147209] = true, -- 恶意
+    --     [147235] = true, -- 恶意冲击
+    --     [147665] = true, -- 不稳定的钢铁之星锁定
+    -- }
+
+    -- -- 坦克
+    -- do
+    --     local function AutoFuc(title)
+    --         local tbl = TJ.SortRaidRosterInfo(title.classTbl, "tank", true)
+    --         for _, v in ipairs(tbl) do
+    --             TJ.SetEditText(v, title)
+    --         end
+    --     end
+    --     local text = L["P1主坦克承受BOSS，副坦克聚拢库卡隆小怪。P2起按绝望之握层数换坦。"]
+    --     TJ.CreateTitle(FB, bossIndex, AutoFuc, "Spell_Deathknight_BloodPresence", L["坦克"],
+    --         text, TJ.tankClass)
+    --     TJ.CreateEdit(FB, bossIndex, L["BOSS坦克"])
+    --     TJ.CreateEdit(FB, bossIndex, L["小怪坦克"])
+    -- end
+
+    -- -- 攻城技师
+    -- do
+    --     local function AutoFuc(title)
+    --         local tbl = TJ.SortRaidRosterInfo(nil, "dps2", true)
+    --         for _, v in ipairs(tbl) do
+    --             TJ.SetEditText(v, title)
+    --         end
+    --     end
+    --     local text = L["安排远程击杀团队指定一侧的攻城技师，需在钢铁之星启动前击杀。"]
+    --     TJ.CreateTitle(FB, bossIndex, AutoFuc, "ability_siege_engineer_detonate", L["攻城技师"],
+    --         text)
+    --     TJ.CreateEdit(FB, bossIndex, L["主击杀"])
+    --     TJ.CreateEdit(FB, bossIndex, L["备份"])
+    -- end
+
+    -- -- 先知狼骑打断
+    -- do
+    --     local function AutoFuc(title)
+    --         local tbl = TJ.SortRaidRosterInfo(title.classTbl, "dps1", true)
+    --         for _, v in ipairs(tbl) do
+    --             TJ.SetEditText(v, title)
+    --         end
+    --     end
+    --     local class = { "DEATHKNIGHT", "PALADIN", "WARRIOR", "SHAMAN", "ROGUE", "MAGE", "MONK" }
+    --     local text = L["必须打断先祖治疗链，闪电链按团队战术处理。"]
+    --     TJ.CreateTitle(FB, bossIndex, AutoFuc, "ability_kick", L["先知狼骑打断"],
+    --         text, class)
+    --     TJ.CreateEdit(FB, bossIndex, L["1打断"])
+    --     TJ.CreateEdit(FB, bossIndex, L["2打断"])
+    -- end
+
+    -- -- 旋风腐蚀团队减伤
+    -- do
+    --     local function AutoFuc(title)
+    --         local tbl = TJ.SortRaidRosterInfo(nil, "healer", true)
+    --         for _, v in ipairs(tbl) do
+    --             TJ.SetEditText(v, title)
+    --         end
+    --     end
+    --     local text = L["安排旋风腐蚀的团队减伤，强化旋风时全团提前分散。"]
+    --     TJ.CreateTitle(FB, bossIndex, AutoFuc, "ability_garrosh_whirling_corruption", L["旋风腐蚀减伤"],
+    --         text)
+    --     for i = 1, 4 do
+    --         TJ.CreateEdit(FB, bossIndex, L["第%s次旋风"]:format(i))
+    --     end
+    -- end
+
+    -- -- 英雄P4恶意与钢铁之星
+    -- do
+    --     local function AutoFuc(title)
+    --         local soakNum = GetNumGroupMembers() > 15 and 5 or 2
+    --         local ranged = TJ.SortRaidRosterInfo(nil, "dps2", true)
+    --         for i = 1, soakNum do
+    --             if ranged[i] then
+    --                 TJ.SetEditTextFormNum(ranged[i], title, i)
+    --             end
+    --         end
+
+    --         local tanks = TJ.SortRaidRosterInfo(TJ.tankClass, "tank", true)
+    --         local kiter = tanks[2] or tanks[1]
+    --         if kiter then
+    --             TJ.SetEditTextFormNum(kiter, title, 6)
+    --         end
+    --     end
+    --     local text = {
+    --         L["仅英雄模式P4使用。10人安排2名恶意分摊，25人安排5名恶意分摊。"],
+    --         L["风筝手引导不稳定的钢铁之星，在具现怒火读条时撞向BOSS。"],
+    --     }
+    --     TJ.CreateTitle(FB, bossIndex, AutoFuc, "ability_warlock_eradication", L["P4恶意/钢铁之星"],
+    --         text)
+    --     for i = 1, 5 do
+    --         TJ.CreateEdit(FB, bossIndex, L["恶意分摊%s"]:format(i))
+    --     end
+    --     TJ.CreateEdit(FB, bossIndex, L["钢铁之星风筝"])
+    -- end
+
+    TJ.CreateSPTitle(FB, bossIndex, { 71865 }, nil)
+
+    -- -- 亵渎
+    -- do
+    --     local info = {
+    --         {
+    --             beDamage = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 144758 },
+    --                         colorNum = 2,
+    --                     },
+    --                     {
+    --                         spellID = { 145829 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             canSend = "count",
+    --             title = { name = L["亵渎落点伤害"] },
+    --         },
+    --         {
+    --             beDamage = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 144762 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             canSend = "count",
+    --             title = { name = L["踩亵渎"] },
+    --         },
+    --     }
+    --     local f = TJ.CreateTitle(FB, bossIndex, nil, "spell_shadow_shadesofdarkness", L["亵渎"],
+    --         nil, nil, nil, info)
+    --     TJ.AddSPTitle(FB, bossIndex, f)
+    -- end
+
+    -- -- 库卡隆钢铁之星
+    -- do
+    --     local info = {
+    --         {
+    --             beDamage = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 144653 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             canSend = "count",
+    --             title = { name = L["被钢铁之星碾压"] },
+    --         },
+    --         {
+    --             beDamage = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 144798 },
+    --                         colorNum = 2,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             title = { name = L["钢铁之星爆炸承伤"] },
+    --         },
+    --     }
+    --     tinsert(info, TJ.combatInfoMore)
+    --     local f = TJ.CreateTitle(FB, bossIndex, nil, "ability_siege_engineer_detonate", L["库卡隆钢铁之星"],
+    --         nil, nil, nil, info)
+    --     TJ.AddSPTitle(FB, bossIndex, f)
+    -- end
+
+    -- -- 内场伤害
+    -- do
+    --     local info = {
+    --         {
+    --             beDamage = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 147324 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             canSend = "count",
+    --             title = { name = L["受到%s伤害"]:format(L["碾压恐惧"]) },
+    --         },
+    --         {
+    --             beDamage = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 144969 },
+    --                         colorNum = 2,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             title = { name = L["歼灭承伤（正面会额外受伤）"] },
+    --         },
+    --     }
+    --     tinsert(info, TJ.combatInfoMore)
+    --     local f = TJ.CreateTitle(FB, bossIndex, nil, "spell_shadow_psychicscream", L["内场伤害"],
+    --         nil, nil, nil, info)
+    --     TJ.AddSPTitle(FB, bossIndex, f)
+    -- end
+
+    -- -- 旋风腐蚀
+    -- do
+    --     local info = {
+    --         {
+    --             beDamage = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 144989 },
+    --                         colorNum = 2,
+    --                     },
+    --                     {
+    --                         spellID = { 145033 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             title = { name = L["旋风腐蚀承伤"] },
+    --         },
+    --     }
+    --     tinsert(info, TJ.combatInfoMore)
+    --     local f = TJ.CreateTitle(FB, bossIndex, nil, "ability_garrosh_whirling_corruption", L["旋风腐蚀"],
+    --         nil, nil, nil, info)
+    --     TJ.AddSPTitle(FB, bossIndex, f)
+    -- end
+
+    -- -- 亚煞极之触
+    -- do
+    --     local info = {
+    --         {
+    --             aura = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 145065 },
+    --                         colorNum = 2,
+    --                     },
+    --                     {
+    --                         spellID = { 145171 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             canSend = "count",
+    --             title = { name = L["被心控"] },
+    --         },
+    --         {
+    --             interrupt = {
+    --                 type = "s",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 145599 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --                 showCount = true,
+    --             },
+    --             title = { name = L["打断心控读条"] },
+    --         },
+    --         {
+    --             castSuccess = {
+    --                 type = "s",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 145599 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --             },
+    --             canSend = "count",
+    --             title = { name = L["心控读条成功（漏断）"] },
+    --         },
+    --     }
+    --     local f = TJ.CreateTitle(FB, bossIndex, nil, "ability_garrosh_touch_of_yshaarj", L["亚煞极之触"],
+    --         nil, nil, nil, info)
+    --     TJ.AddSPTitle(FB, bossIndex, f)
+    -- end
+
+    -- -- 绝望之握
+    -- do
+    --     local info = {
+    --         {
+    --             aura = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 145183 },
+    --                         colorNum = 2,
+    --                         combatRole = { "Istank" },
+    --                     },
+    --                     {
+    --                         spellID = { 145195 },
+    --                         colorNum = 1,
+    --                         combatRole = { "Istank" },
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --             },
+    --             title = { name = L["绝望之握层数"] },
+    --         },
+    --         {
+    --             beDamage = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 145213 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             title = { name = L["绝望爆发承伤"] },
+    --         },
+    --     }
+    --     for _, v in ipairs(TJ.combatInfoTank) do
+    --         tinsert(info, v)
+    --     end
+    --     local f = TJ.CreateTitle(FB, bossIndex, nil, "ability_warlock_everlastingaffliction", L["绝望之握"],
+    --         nil, nil, nil, info)
+    --     TJ.AddSPTitle(FB, bossIndex, f)
+    -- end
+
+    -- -- 恶意（英雄模式）
+    -- do
+    --     local info = {
+    --         {
+    --             aura = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 147209 },
+    --                         colorNum = 2,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             title = { name = L["恶意点名"] },
+    --         },
+    --         {
+    --             aura = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 147235 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             canSend = "count",
+    --             title = { name = L["恶意冲击层数"] },
+    --         },
+    --         {
+    --             beDamage = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 147235 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             title = { name = L["恶意分摊承伤"] },
+    --         },
+    --         {
+    --             aura = {
+    --                 type = "d",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 147665 },
+    --                         colorNum = 5,
+    --                     },
+    --                 },
+    --                 destNpcType = { "Player" },
+    --                 showCount = true,
+    --             },
+    --             title = { name = L["不稳定的钢铁之星锁定"] },
+    --         },
+    --     }
+    --     local f = TJ.CreateTitle(FB, bossIndex, nil, "ability_warlock_eradication", L["恶意（英雄）"],
+    --         nil, nil, nil, info)
+    --     TJ.AddSPTitle(FB, bossIndex, f)
+    -- end
+
+    -- -- 炮击（英雄模式）
+    -- do
+    --     local info = {
+    --         beDamage = {
+    --             type = "d",
+    --             spell = {
+    --                 {
+    --                     spellID = { 147136 },
+    --                     colorNum = 1,
+    --                 },
+    --             },
+    --             destNpcType = { "Player" },
+    --             showCount = true,
+    --         },
+    --         canSend = "count",
+    --         title = { name = L["受到%s伤害（踩火）"]:format(L["炮击"]) },
+    --     }
+    --     local f = TJ.CreateTitle(FB, bossIndex, nil, "spell_fire_meteorstorm", L["炮击（英雄）"],
+    --         nil, nil, nil, info)
+    --     TJ.AddSPTitle(FB, bossIndex, f)
+    -- end
+
+    -- -- 先知狼骑打断
+    -- do
+    --     local info = {
+    --         {
+    --             interrupt = {
+    --                 type = "s",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 144583 },
+    --                         colorNum = 1,
+    --                     },
+    --                     {
+    --                         spellID = { 144584 },
+    --                         colorNum = 2,
+    --                     },
+    --                 },
+    --                 showCount = true,
+    --             },
+    --             title = { name = L["打断先祖治疗链/闪电链"] },
+    --         },
+    --         {
+    --             castSuccess = {
+    --                 type = "s",
+    --                 spell = {
+    --                     {
+    --                         spellID = { 144583 },
+    --                         colorNum = 1,
+    --                     },
+    --                 },
+    --             },
+    --             canSend = "count",
+    --             title = { name = L["先祖治疗链成功（漏断）"] },
+    --         },
+    --     }
+    --     local f = TJ.CreateTitle(FB, bossIndex, nil, "ability_kick", L["先知狼骑打断"],
+    --         nil, nil, nil, info)
+    --     TJ.AddSPTitle(FB, bossIndex, f)
+    -- end
+
+    -- -- 关键目标伤害
+    -- do
+    --     local info = {
+    --         {
+    --             dps = {
+    --                 type = "s",
+    --                 destNPCID = { 71979 },
+    --             },
+    --             showRaidMember = true,
+    --             canSend = "dps",
+    --             title = { name = L["库卡隆战争使者"] },
+    --         },
+    --         {
+    --             dps = {
+    --                 type = "s",
+    --                 destNPCID = { 71983 },
+    --             },
+    --             showRaidMember = true,
+    --             canSend = "dps",
+    --             title = { name = L["先知狼骑"] },
+    --         },
+    --         {
+    --             dps = {
+    --                 type = "s",
+    --                 destNPCID = { 71984 },
+    --             },
+    --             showRaidMember = true,
+    --             canSend = "dps",
+    --             title = { name = L["攻城技师"] },
+    --         },
+    --         {
+    --             dps = {
+    --                 type = "s",
+    --                 destNPCID = { 72154 },
+    --             },
+    --             showRaidMember = true,
+    --             canSend = "dps",
+    --             title = { name = L["亵渎武器"] },
+    --         },
+    --         {
+    --             dps = {
+    --                 type = "s",
+    --                 destNPCID = { 72236, 72237, 72238 },
+    --             },
+    --             showRaidMember = true,
+    --             canSend = "dps",
+    --             title = { name = L["亚煞极领域小怪"] },
+    --         },
+    --         {
+    --             dps = {
+    --                 type = "s",
+    --                 destNPCID = { 72272 },
+    --             },
+    --             showRaidMember = true,
+    --             canSend = "dps",
+    --             title = { name = L["亚煞极爪牙"] },
+    --         },
+    --         isMany = true,
+    --     }
+    --     local f = TJ.CreateTitle(FB, bossIndex, nil, "ability_warrior_cleave", L["关键目标伤害"],
+    --         nil, nil, nil, info)
+    --     TJ.AddSPTitle(FB, bossIndex, f)
+    -- end
+
+    -- local phase = 1
+    -- local realmCount = 0
+
+    -- local function AddPhase(name)
+    --     tinsert(TJ.GetNewCombatLog().otherTime, {
+    --         time = TJ.GetDurTime(),
+    --         name = name,
+    --     })
+    -- end
+
+    -- mainFrame.ENCOUNTER_START = function()
+    --     phase = 1
+    --     realmCount = 0
+    -- end
+
+    -- mainFrame.UNIT_SPELLCAST_SUCCEEDED = function(_, spellID)
+    --     if spellID == 144866 and not TJ.SetCD(mainFrame, 2, spellID) then -- 进入亚煞极领域
+    --         realmCount = realmCount + 1
+    --         AddPhase(L["内场%s"]:format(realmCount))
+    --     elseif spellID == 144956 and not TJ.SetCD(mainFrame, 2, spellID) then -- 返回奥格瑞玛
+    --         if phase == 1 then
+    --             phase = 2
+    --             AddPhase("P2")
+    --         else
+    --             AddPhase(L["返回外场%s"]:format(realmCount))
+    --         end
+    --     elseif spellID == 145647 and phase < 3 and not TJ.SetCD(mainFrame, 2, spellID) then
+    --         phase = 3
+    --         AddPhase("P3")
+    --     elseif spellID == 146984 and phase < 4 and not TJ.SetCD(mainFrame, 2, spellID) then
+    --         phase = 4
+    --         AddPhase("P4")
+    --     end
+    -- end
+end
