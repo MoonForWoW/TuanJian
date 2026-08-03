@@ -475,19 +475,6 @@ function TJ.InitOptions()
         end)
     end
     h = h + 30
-    -- 减伤链接收器WA有更新时弹窗
-    do
-        local name = "showBoardWAStaticPopup"
-        TJ.options[name .. "reset"] = 1
-        TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
-        local ontext = {
-            L["减伤链接收器WA有更新时弹窗"],
-            L["减伤链接收器WA有更新时，会在进入游戏后弹窗安装。"],
-        }
-        local f = O.CreateCheckButton(name, (L["减伤链接收器WA有更新时弹窗"]), optionFrame, 30, height - h, ontext)
-        TJ.options["button" .. name] = f
-    end
-    h = h + 30
     -- 进本自动清空历史数据
     do
         local name = "autoClear"

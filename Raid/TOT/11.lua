@@ -162,13 +162,7 @@ TJ.Load[FB .. bossIndex] = function()
             },
             AutoFuc = AutoFuc,
         }
-
-        --[[
-/run m=TJ.frame["TOT"][11] TJ.Board_ENCOUNTER_START("TOT", 11)
-/run TJ.Board_SPELL_CAST_START(nil,nil,nil,"1",nil,nil,nil,"1-2-3-4-5-70235",nil,nil,nil,137491)
-/run ChatThrottleLib:SendAddonMessage("ALERT", 'D5', 'Inferno', "RAID")
-
- ]]
+        
         mainFrame.Board_test = function()
             TJ.Board_ENCOUNTER_START(FB, bossIndex, true)
             TJ.Board_info[bossSpellID].canUpdate = true

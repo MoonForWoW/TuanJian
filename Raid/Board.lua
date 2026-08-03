@@ -18,11 +18,19 @@ local LoadAddOn     = LoadAddOn or C_AddOns.LoadAddOn
 
 local info          = {}
 TJ.Board_info     = info
-local boardChannel  = "TuanJianBoard2"
+local boardChannelPrefix = "TuanJianBoard"
+local boardChannelCount = 5
+local boardChannelIndex = 0
 
-C_ChatInfo.RegisterAddonMessagePrefix(boardChannel)
-C_ChatInfo.RegisterAddonMessagePrefix("TuanJianBoardVer")
+for i = 1, boardChannelCount do
+    C_ChatInfo.RegisterAddonMessagePrefix(boardChannelPrefix .. i)
+end
 C_ChatInfo.RegisterAddonMessagePrefix("D5")
+
+local function GetNextBoardChannel()
+    boardChannelIndex = boardChannelIndex % boardChannelCount + 1
+    return boardChannelPrefix .. boardChannelIndex
+end
 
 local load = 0
 TJ.boardCallback = {}
@@ -205,13 +213,11 @@ function TJ.CreateBoard(FB, bossIndex, spellInfo)
             " ",
             L["|cffffffff设置减伤链：|r团长/助理可以手动设置减伤链，也可以点击[一键安排]按钮来自动设置减伤链。"],
             " ",
-            L["|cffffffff安装WA：|r团长/助理点击最下方的[安装接收器WA]按钮，安装成功后，把该WA链接发给团员安装。"],
-            " ",
             L["|cffffffff使用效果"],
             " ",
-            L["|cffffffff团员：|r已安装接收器WA的团员如果该轮减伤是他自己，屏幕上方会显示一个倒计时进度条，方便他知道什么时候交减伤。剩余时间少于3秒时还会有\"叮叮叮\"音效提醒。"],
+            L["|cffffffff团员：|r已安装BiaoGe插件的团员如果该轮减伤是他自己，屏幕上方会显示一个倒计时进度条，方便他知道什么时候交减伤。剩余时间少于3秒时还会有\"叮叮叮\"音效提醒。"],
             " ",
-            L["|cffffffff团长/助理：|r你能看到所有人每一轮的倒计时进度条。剩余时间少于5秒时会自动密语相应责任人，提醒他开减伤，即使对方没有安装接收器WA。"],
+            L["|cffffffff团长/助理：|r你能看到所有人每一轮的倒计时进度条。剩余时间少于5秒时会自动密语相应责任人，提醒他开减伤，即使对方没有安装BiaoGe插件。"],
         }
         local f = CreateFrame("Frame", nil, mainFrame)
         f:SetPoint("TOPLEFT", 5, -1)
@@ -298,7 +304,7 @@ function TJ.CreateBoard(FB, bossIndex, spellInfo)
         end
 
         do
-            local f, child = TJ.CreateScrollFrame(mainFrame, mainFrame:GetWidth() - 20, mainFrame:GetHeight() - 120, nil)
+            local f, child = TJ.CreateScrollFrame(mainFrame, mainFrame:GetWidth() - 20, mainFrame:GetHeight() - 100, nil)
             f:SetBackdrop({
                 bgFile = "Interface/ChatFrame/ChatFrameBackground",
                 edgeFile = "Interface/ChatFrame/ChatFrameBackground",
@@ -340,7 +346,7 @@ function TJ.CreateBoard(FB, bossIndex, spellInfo)
     do
         local bt = CreateFrame("Button", nil, mainFrame)
         bt:SetSize(18, 18)
-        bt:SetPoint("TOPRIGHT", mainFrame, "BOTTOMRIGHT", -10, 60)
+        bt:SetPoint("TOPRIGHT", mainFrame, "BOTTOMRIGHT", -10, 40)
         bt:SetNormalTexture("interface/raidframe/readycheck-notready")
         bt:SetHighlightTexture("interface/raidframe/readycheck-notready")
         bt:RegisterForClicks("AnyUp")
@@ -583,6 +589,7 @@ function TJ.Board_SetBar(bossSpellID, index, player, durTime, spellIDs, autoHide
     durTime = format("%.2f", durTime)
     autoHide = autoHide and "autoHide" or ""
     now = now and "now" or ""
+    player = TJ.GFN(player)
     msg = "show" .. ","
         .. bossSpellID .. ","
         .. index .. ","
@@ -591,8 +598,9 @@ function TJ.Board_SetBar(bossSpellID, index, player, durTime, spellIDs, autoHide
         .. spellIDs .. ","
         .. autoHide .. ","
         .. now
+        -- ..  ","..'苍骑士'
     -- pt(msg)
-    ChatThrottleLib:SendAddonMessage("ALERT", boardChannel, msg, "RAID")
+    C_ChatInfo.SendAddonMessage(GetNextBoardChannel(), msg, "RAID")
 end
 
 local function SetBar(tbl, arrange, bossSpellID, index, durationTime, autoHide, now)
@@ -622,13 +630,13 @@ end
 function TJ.Board_HideBar(bossSpellID)
     if not TJ.IsLeader() then return end
     local msg = format("%s,%s", "hide", bossSpellID)
-    ChatThrottleLib:SendAddonMessage("ALERT", boardChannel, msg, "RAID")
+    C_ChatInfo.SendAddonMessage(GetNextBoardChannel(), msg, "RAID")
 end
 
 function TJ.Board_HideAllBar()
     if not TJ.IsLeader() then return end
     local msg = format("%s", "hideAll")
-    ChatThrottleLib:SendAddonMessage("ALERT", boardChannel, msg, "RAID")
+    C_ChatInfo.SendAddonMessage(GetNextBoardChannel(), msg, "RAID")
 end
 
 function TJ.Board_NextSpell(bossSpellID)

@@ -13,11 +13,13 @@ local BG = TJ
 local realmID = GetRealmID()
 local player = UnitName("player")
 
-local prefix = "TuanJianMap"
-C_ChatInfo.RegisterAddonMessagePrefix(prefix)
+local prefix = "BiaoGeAIMap"
+local prefixCount = 10
+local prefixIndex = 0
 
-for i = 1, 15 do
-    C_ChatInfo.RegisterAddonMessagePrefix(prefix .. i)
+local function GetNextMapChannel()
+    prefixIndex = prefixIndex % prefixCount + 1
+    return prefix .. prefixIndex
 end
 
 local IsAddOnLoaded = IsAddOnLoaded or C_AddOns.IsAddOnLoaded
@@ -45,6 +47,7 @@ local function CreateOptionFrame()
 
         f.CloseButton = CreateFrame("Button", nil, f, "UIPanelCloseButton")
         f.CloseButton:SetPoint("TOPRIGHT", f, "TOPRIGHT", 2, 2)
+        f.CloseButton:SetFrameLevel(f:GetFrameLevel() + 1)
     end
 
     local h = -20
@@ -985,8 +988,8 @@ function TJ.SendMap(FB, bossIndex, mapIndex, childIndex, mapBossIndex, map)
         tinsert(msgs, sendStr)
         currentPos = targetEndPos + 1
     end
-    for i, msg in ipairs(msgs) do
-        C_ChatInfo.SendAddonMessage(prefix .. i, msg, "RAID")
+    for _, msg in ipairs(msgs) do
+        C_ChatInfo.SendAddonMessage(GetNextMapChannel(), msg, "RAID")
     end
     if TJ.IsTitan then
         local delay = 1.5

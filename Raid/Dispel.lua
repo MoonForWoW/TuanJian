@@ -278,6 +278,7 @@ TJ.Init(function()
 
             mainFrame.CloseButton = CreateFrame("Button", nil, mainFrame, "UIPanelCloseButton")
             mainFrame.CloseButton:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", 4, 4)
+            mainFrame.CloseButton:SetFrameLevel(mainFrame:GetFrameLevel() + 1)
             mainFrame.CloseButton:HookScript("OnClick", function()
                 TuanJian.dispel.show = 0
             end)

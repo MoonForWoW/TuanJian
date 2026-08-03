@@ -244,7 +244,7 @@ TJ.Init(function()
 
     -- 模块切换
     do
-        -- TJ.canUseTips = true
+        TJ.canUseTips = true
         TuanJian.lastFrameNum = TuanJian.lastFrameNum or (TJ.canUseTips and 1 or 2)
 
         TJ.tabButtons = {}
@@ -350,7 +350,9 @@ TJ.Init(function()
             return bt
         end
 
-        -- local bt = TJ.Create_TabButton(TJ.raidMainFrameTabNum, L["战术"], TJ.raidMainFrame)
+        if TJ.canUseTips then   
+        local bt = TJ.Create_TabButton(TJ.raidMainFrameTabNum, L["战术"], TJ.raidMainFrame)
+        end
         local bt = TJ.Create_TabButton(TJ.raidTargetMainFrameTabNum, L["锁标"], TJ.raidTargetMainFrame)
         local bt = TJ.Create_TabButton(TJ.tjMainFrameTabNum, TJ.IsTBC and L["个减"] or L["团减"], TJ.tjMainFrame)
         if TJ.IsMOP then

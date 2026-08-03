@@ -486,6 +486,7 @@ function TJ.CreateMainFrame(name, titleText)
 
     f.CloseButton = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     f.CloseButton:SetPoint("TOPRIGHT", 5, 5)
+    f.CloseButton:SetFrameLevel(f:GetFrameLevel() + 1)
 
     f.titleText = f:CreateFontString()
     f.titleText:SetPoint("TOP", 0, -4)

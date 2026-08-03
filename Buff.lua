@@ -619,6 +619,7 @@ TJ.Init(function()
     do
         local CLICK_ALL_CD = 12
         local CLICK_CD = 8
+        local BURST_POTION_RESET_DELAY = 60 * 2 -- 战斗后爆发药水重置时间 
         local monitorSaved = TuanJian.Buff.monitor or {}
         if monitorSaved.layout ~= 2 and monitorSaved.layout ~= 3 then
             monitorSaved.layout = 1
@@ -640,7 +641,7 @@ TJ.Init(function()
         if not validFrameStrata[monitorSaved.frameStrata] then
             monitorSaved.frameStrata = "MEDIUM"
         end
-        local frameScaleOptions = { 60, 70, 80, 90, 100, 110, 120, 130, 140, 150 }
+        local frameScaleOptions = { 80, 85, 90, 95, 100, 105, 110, 115, 120 }
         local validFrameScale = {}
         for _, percent in ipairs(frameScaleOptions) do
             validFrameScale[percent / 100] = true
@@ -655,6 +656,8 @@ TJ.Init(function()
         local missingWhisperCD = {}
         local burstPotionUsed = {}
         local burstPotionActive
+        local burstPotionResetPending
+        local burstPotionResetGeneration = 0
         local SendMissingWhisper, OpenMonitorMenu, GetResponsibilityUnit, UpdateMonitorLayout, UpdateMonitor
         local IsMonitorRowEnabled
         local StartMonitorMoving, StopMonitorMoving
@@ -680,10 +683,10 @@ TJ.Init(function()
         }
         local burstPotionInfo = {
             auraID = {
-                [28714] = true, -- 烈焰菇
-                [53908] = true, -- 速度药水
-                [53909] = true, -- 狂野魔法药水
-                [53762] = true, -- 不灭药水
+                [28714] = true,   -- 烈焰菇
+                [53908] = true,   -- 速度药水
+                [53909] = true,   -- 狂野魔法药水
+                [53762] = true,   -- 不灭药水
                 [1282971] = true, -- 狂野魔精
                 -- [20217] = true,   -- test
             },
@@ -707,6 +710,7 @@ TJ.Init(function()
             noWhisper = true,
             countMode = "casterClass",
             casterClass = "MAGE",
+            missingTitle = L["未使用："],
         }
         local personalBuffInfo = {
             monitorDisplayID = 25780,
@@ -1133,7 +1137,7 @@ TJ.Init(function()
                 local c = C_Spell.GetSpellTexture(spellID)
                 local icon = AddTexture(c)
                 local spell = C_Spell.GetSpellLink(spellID) or GetSpellInfo(spellID) or spellID
-                tinsert(texts, format(L["%s%s×%s"], icon, spell, count))
+                tinsert(texts, format(L["%s%s|cffffffff×%s|r"], icon, spell, count))
             end
             for _, spellID in ipairs(burstPotionOrder) do
                 AddSpell(spellID)
@@ -1437,12 +1441,18 @@ TJ.Init(function()
         end
         RegisterAuraInfo(paladinPersonalBuffRule)
 
-        local function ScanUnitAuras(unit)
+        local function ScanUnitAuras(unit, focusMagicCasters)
             local matchedAuraInfo = {}
             local now = GetTime()
             for auraIndex = 1, 60 do
-                local auraName, _, _, _, duration, expirationTime, _, _, _, spellID = UnitBuff(unit, auraIndex)
+                local auraName, _, _, _, duration, expirationTime, source, _, _, spellID = UnitBuff(unit, auraIndex)
                 if not auraName then break end
+                if focusMagicCasters and spellID == focusMagicInfo.monitorDisplayID and source then
+                    local sourceGUID = UnitGUID(source)
+                    if sourceGUID then
+                        focusMagicCasters[sourceGUID] = true
+                    end
+                end
                 local valid = not duration or duration == 0 or not expirationTime or expirationTime == 0 or
                     expirationTime - now >= EXPIRE_TIME
                 local infos = auraInfoByName[auraName]
@@ -1507,19 +1517,24 @@ TJ.Init(function()
             local members = {}
             local petMembers = {}
             local burstPotionMembers = {}
+            local auraStateByRaidIndex = {}
+            local focusMagicCasters = {}
             for raidIndex = 1, GetNumGroupMembers() do
                 local unit = "raid" .. raidIndex
-                if UnitExists(unit) and UnitIsConnected(unit) and not GetPartyAssignment("MAINASSIST", unit) then
-                    local name = TJ.GSN(UnitName(unit))
-                    local pointText = raidPoint[name] or "?-"
-                    local subgroup, subgroupIndex = strmatch(pointText, "^(%d+)%-(%d+)$")
-                    tinsert(burstPotionMembers, {
-                        guid = UnitGUID(unit),
-                        name = name,
-                        point = pointText .. " ",
-                        class = select(2, UnitClass(unit)),
-                        sortIndex = subgroup and tonumber(subgroup) * 10 + tonumber(subgroupIndex) or 999,
-                    })
+                if UnitExists(unit) and UnitIsConnected(unit) then
+                    auraStateByRaidIndex[raidIndex] = ScanUnitAuras(unit, focusMagicCasters)
+                    if not GetPartyAssignment("MAINASSIST", unit) then
+                        local name = TJ.GSN(UnitName(unit))
+                        local pointText = raidPoint[name] or "?-"
+                        local subgroup, subgroupIndex = strmatch(pointText, "^(%d+)%-(%d+)$")
+                        tinsert(burstPotionMembers, {
+                            guid = UnitGUID(unit),
+                            name = name,
+                            point = pointText .. " ",
+                            class = select(2, UnitClass(unit)),
+                            sortIndex = subgroup and tonumber(subgroup) * 10 + tonumber(subgroupIndex) or 999,
+                        })
+                    end
                 end
             end
             for raidIndex = 1, GetNumGroupMembers() do
@@ -1534,9 +1549,10 @@ TJ.Init(function()
                     local point = pointText .. " "
                     tinsert(members, {
                         rosterInfo = rosterInfo,
+                        guid = UnitGUID(unit),
                         name = name,
                         point = point,
-                        auraState = ScanUnitAuras(unit),
+                        auraState = auraStateByRaidIndex[raidIndex],
                         class = rosterInfo and rosterInfo.class or select(2, UnitClass(unit)),
                         sortIndex = sortIndex,
                     })
@@ -1628,9 +1644,15 @@ TJ.Init(function()
                                 elseif buffInfo.countMode == "casterClass" then
                                     if rosterInfo and rosterInfo.class == buffInfo.casterClass then
                                         total = total + 1
-                                    end
-                                    if GetAuraState(member.auraState, buffInfo) then
-                                        has = has + 1
+                                        if member.guid and focusMagicCasters[member.guid] then
+                                            has = has + 1
+                                        else
+                                            tinsert(row.missing, {
+                                                name = member.name,
+                                                point = member.point,
+                                                class = member.class,
+                                            })
+                                        end
                                     end
                                 elseif buffInfo.countMode == "personalBuff" then
                                     local rule = GetPersonalBuffRule(rosterInfo)
@@ -1693,15 +1715,40 @@ TJ.Init(function()
             UpdateMonitor()
         end
 
+        local function CancelBurstPotionMonitorReset()
+            burstPotionResetGeneration = burstPotionResetGeneration + 1
+            burstPotionResetPending = nil
+        end
+
+        local function ClearBurstPotionMonitor()
+            wipe(burstPotionUsed)
+            burstPotionActive = nil
+            UpdateMonitor()
+        end
+
         function TJ.StartBurstPotionMonitor()
+            if burstPotionResetPending then
+                CancelBurstPotionMonitorReset()
+                wipe(burstPotionUsed)
+            end
             burstPotionActive = true
             UpdateMonitor()
         end
 
         function TJ.ResetBurstPotionMonitor()
-            wipe(burstPotionUsed)
-            burstPotionActive = nil
-            UpdateMonitor()
+            CancelBurstPotionMonitorReset()
+            ClearBurstPotionMonitor()
+        end
+
+        function TJ.ScheduleBurstPotionMonitorReset()
+            burstPotionResetGeneration = burstPotionResetGeneration + 1
+            local generation = burstPotionResetGeneration
+            burstPotionResetPending = true
+            After(BURST_POTION_RESET_DELAY, function()
+                if not burstPotionResetPending or burstPotionResetGeneration ~= generation then return end
+                burstPotionResetPending = nil
+                ClearBurstPotionMonitor()
+            end)
         end
 
         TJ.RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", function(self, event, ...)
@@ -1710,6 +1757,10 @@ TJ.Init(function()
             if (subevent ~= "SPELL_AURA_APPLIED" and subevent ~= "SPELL_AURA_REFRESH") or
                 not burstPotionInfo.auraID[spellID] or not TJ.raidRosterGUID[destGUID] then
                 return
+            end
+            if burstPotionResetPending then
+                CancelBurstPotionMonitorReset()
+                wipe(burstPotionUsed)
             end
             burstPotionUsed[destGUID] = burstPotionUsed[destGUID] or {}
             local potions = burstPotionUsed[destGUID]

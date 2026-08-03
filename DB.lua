@@ -482,12 +482,12 @@ TJ.Init(function()
 
         local Interface = "Interface\\AddOns\\TuanJian\\Media\\sound\\AI\\"
         TJ.voice = {}
-        TJ.voice["即将连线"] = Interface .. "即将连线.mp3"
-        TJ.voice["即将寄生"] = Interface .. "即将寄生.mp3"
-        TJ.voice["即将收割"] = Interface .. "即将收割.mp3"
-        TJ.voice["即将群体寒冰箭"] = Interface .. "即将群体寒冰箭.mp3"
-        TJ.voice["准备孢子减伤"] = Interface .. "准备孢子减伤.mp3"
-        TJ.voice["即将刺鼻毒气"] = Interface .. "即将刺鼻毒气.mp3"
+        -- TJ.voice["即将连线"] = Interface .. "即将连线.mp3"
+        -- TJ.voice["即将寄生"] = Interface .. "即将寄生.mp3"
+        -- TJ.voice["即将收割"] = Interface .. "即将收割.mp3"
+        -- TJ.voice["即将群体寒冰箭"] = Interface .. "即将群体寒冰箭.mp3"
+        -- TJ.voice["准备孢子减伤"] = Interface .. "准备孢子减伤.mp3"
+        -- TJ.voice["即将刺鼻毒气"] = Interface .. "即将刺鼻毒气.mp3"
     end
 
     -- 给文本上颜色

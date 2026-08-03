@@ -1409,6 +1409,7 @@ function TJ.CreateCombatFrame(...)
 
         f.CloseButton = CreateFrame("Button", nil, f, "UIPanelCloseButton")
         f.CloseButton:SetPoint("TOPRIGHT", f, "TOPRIGHT", 5, 5)
+        f.CloseButton:SetFrameLevel(f:GetFrameLevel() + 1)
         f.CloseButton:SetScript("OnClick", function(self)
             if TJ.combatFrameMany[1] and TJ.combatFrameMany[1]:IsVisible() then
                 TJ.combatFrameMany[1]:Hide()

@@ -38,5 +38,4 @@ if (l == "zhTW" or l == "enUS") then return end
 local L = {}
 
 do
-
 end

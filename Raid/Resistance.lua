@@ -121,6 +121,7 @@ function TJ.CreateResistanceFrame(FB, bossIndex, icon, titleString, resistanceID
         f:SetBackdropBorderColor(0, 0, 0, 1)
         f:SetSize(405, 400)
         f.CloseButton = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+        f.CloseButton:SetFrameLevel(f:GetFrameLevel() + 1)
         if not point or point == "RIGHT" then
             f:SetPoint("TOPLEFT", TJ.MainFrame, "TOPRIGHT", 1, 0)
             f.CloseButton:SetPoint("TOPRIGHT", f, "TOPRIGHT", 4, 4)

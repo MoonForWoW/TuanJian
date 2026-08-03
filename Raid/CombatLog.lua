@@ -277,8 +277,8 @@ function TJ.ENCOUNTER_END(self, event, bossID, bossName, difficultyID, groupSize
         print("ENCOUNTER_END", bossID, bossName, difficultyID, groupSize, success, isDBM and 'isDBM' or nil)
     end
     if not bossID then return end
-    if TJ.ResetBurstPotionMonitor then
-        TJ.ResetBurstPotionMonitor()
+    if TJ.ScheduleBurstPotionMonitorReset then
+        TJ.ScheduleBurstPotionMonitorReset()
     end
     lastEndTime[bossID] = GetTime()
     local FB, bossIndex = GetEncounterID(bossID)

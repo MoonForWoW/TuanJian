@@ -46,7 +46,7 @@ TJ.Load[FB .. bossIndex] = function()
     --     end
     -- end
 
-    -- 坦克
+--[=[     -- 坦克
     do
         local function AutoFuc(title)
             local tbl = TJ.SortRaidRosterInfo(title.classTbl, "tank", true)
@@ -165,7 +165,7 @@ TJ.Load[FB .. bossIndex] = function()
         TJ.CreateEdit(FB, bossIndex, L["卡兹提克：操纵者大师（任意）"])
         TJ.CreateEdit(FB, bossIndex, L["基尔鲁克：收割（DPS）"])
     end
-
+ ]=]
     -- -- 团队减伤
     -- do
     --     local function AutoFuc(title)
@@ -185,7 +185,7 @@ TJ.Load[FB .. bossIndex] = function()
     -- end
 
     TJ.CreateSPTitle(FB, bossIndex, nil, nil)
-
+--[=[ 
     -- 瞄准
     do
         local info = {
@@ -490,5 +490,5 @@ TJ.Load[FB .. bossIndex] = function()
                 name = L["击杀%s"]:format(name),
             })
         end
-    end
+    end ]=]
 end
