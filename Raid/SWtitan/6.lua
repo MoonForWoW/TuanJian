@@ -116,22 +116,26 @@ TJ.Load[FB .. bossIndex] = function()
         --[[
 
 
-
-
 ]]
 
         local function AutoFuc()
+            local assignedMage = {}
             local tbl = TJ.SortRaidRosterInfo({ 'MAGE' }, "", true)
             for i, v in ipairs(tbl) do
-                TJ.SetMapIconPlayer(v, { min = 7, max = 8 })
+                if i <= 2 then
+                    TJ.SetMapIconPlayer(v, { min = 7, max = 8 })
+                    assignedMage[v.name] = true
+                end
             end
             local tbl = TJ.SortRaidRosterInfo(nil, "healer", true)
             for i, v in ipairs(tbl) do
                 TJ.SetMapIconPlayer(v)
             end
-            local tbl = TJ.SortRaidRosterInfo(nil, "dps2", true)
+            local tbl = TJ.SortRaidRosterInfo({ "HUNTER", "SHAMAN", "DRUID", "MAGE", "WARLOCK", "PRIEST" }, "dps2", true)
             for i, v in ipairs(tbl) do
-                TJ.SetMapIconPlayer(v)
+                if not assignedMage[v.name] then
+                    TJ.SetMapIconPlayer(v)
+                end
             end
         end
         local text = {
@@ -229,9 +233,13 @@ TJ.Load[FB .. bossIndex] = function()
 ]]
 
         local function AutoFuc()
+            local assignedMage = {}
             local tbl = TJ.SortRaidRosterInfo({ 'MAGE' }, "", true)
             for i, v in ipairs(tbl) do
-                TJ.SetMapIconPlayer(v, { min = 7, max = 8 }, 2)
+                if i <= 2 then
+                    TJ.SetMapIconPlayer(v, { min = 7, max = 8 }, 2)
+                    assignedMage[v.name] = true
+                end
             end
             local tbl = TJ.SortRaidRosterInfo(nil, "healer", true)
             for i, v in ipairs(tbl) do
@@ -239,7 +247,9 @@ TJ.Load[FB .. bossIndex] = function()
             end
             local tbl = TJ.SortRaidRosterInfo(nil, "dps2", true)
             for i, v in ipairs(tbl) do
-                TJ.SetMapIconPlayer(v, nil, 2)
+                if not assignedMage[v.name] then
+                    TJ.SetMapIconPlayer(v, nil, 2)
+                end
             end
         end
         local text = {

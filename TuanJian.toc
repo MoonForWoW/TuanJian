@@ -4,7 +4,7 @@
 ## IconTexture: Interface\AddOns\TuanJian\Media\icon\icon.tga
 ## Author: 苍穹之霜
 ## SavedVariables: TuanJian
-## Version: 2.1.3
+## Version: 2.1.4
 
 Templates.xml
 Libs\embeds.xml
