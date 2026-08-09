@@ -198,6 +198,8 @@ TJ.Load[FB .. bossIndex] = function()
                             colorNum = 3,
                         },
                     },
+                    showCount = true,
+                    destNPCID = { 25166 }
                 },
                 title = { name = L["高热"] },
             },
@@ -224,20 +226,36 @@ TJ.Load[FB .. bossIndex] = function()
     -- 踩地板火
     do
         local info = {
-            beDamage = {
-                type = "d",
-                spell = {
-                    {
-                        spellID = {
-                            45235,
+            {
+                beDamage = {
+                    type = "d",
+                    spell = {
+                        {
+                            spellID = {
+                                45235,
+                            },
+                            colorNum = 1,
                         },
-                        colorNum = 1,
+                    },
+                    destNpcType = { "Player" },
+                    showCount = true,
+                },
+                title = { name = L["受到%s伤害（踩地板火）"]:format(L["光芒"]) },
+            },
+            {
+                castSuccess = {
+                    type = "d",
+                    spell = {
+                        {
+                            spellID = {
+                                45235,    
+                            },
+                            colorNum = 1
+                        },
                     },
                 },
-                destNpcType = { "Player" },
-                showCount = true,
-            },
-            title = { name = L["受到%s伤害（踩地板火）"]:format(L["光芒"]) },
+                title = { name = L["光芒的施法目标（查远程是否OT）"] },
+            }
         }
         local f = TJ.CreateTitle(FB, bossIndex, nil, "spell_fire_fire", L["踩地板火"],
             nil, nil, nil, info)

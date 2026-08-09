@@ -140,11 +140,121 @@ TJ.Load[FB .. bossIndex] = function()
             L["8-17：远程DPS。"],
         }
 
-        TJ.CreateTitle(FB, bossIndex, AutoFuc, "spell_nature_wispsplode", L["站位"],
+        TJ.CreateTitle(FB, bossIndex, AutoFuc, "spell_nature_wispsplode", L["传统站位"],
             text)
         local width = 600
         local map = TJ.CreateMap(FB, bossIndex, tbl, width, width / 879 * 779, nil, nil, nil, "v2.0.3")
     end
+
+    -- 站位图
+    do
+        local tbl = {
+            { point = "TOPLEFT", xy = { 185,-353 } },
+            { point = "TOPLEFT", xy = { 301,-405 } },
+            { point = "TOPLEFT", xy = { 407,-347 } },
+            { point = "TOPLEFT", xy = { 302,-466 } },
+            { point = "TOPLEFT", xy = { 461,-474} },
+            { point = "TOPLEFT", xy = { 146,-486 } },
+            { point = "TOPLEFT", xy = { 131,-401 } },
+            { point = "TOPLEFT", xy = { 461,-387} },
+            { point = "TOPLEFT", xy = { 235,-385 } },
+            { point = "TOPLEFT", xy = { 362,-387 } },
+            { point = "TOPLEFT", xy = { 183,-437 } },
+            { point = "TOPLEFT", xy = { 233,-457 } },
+            { point = "TOPLEFT", xy = { 376,-454} },
+            { point = "TOPLEFT", xy = { 421,-428} },
+            { point = "TOPLEFT", xy = { 218,-506 } },
+            { point = "TOPLEFT", xy = { 305,-509} },
+            { point = "TOPLEFT", xy = { 391,-500} },
+
+            [80] = {
+                xy = { 620, -23 },
+                isNPC = true,
+                isNPC_help = true,
+                isNPC_text = L["空气\n图腾"],
+                isNPC_icon = "Interface\\Icons\\spell_nature_slowingtotem",
+            },
+            [90] = {
+                xy = { 524, -82 },
+                isNPC = true,
+                isNPC_help = true,
+                isNPC_text = L["宝珠"],
+                isNPC_icon = "Interface\\Icons\\inv_misc_orb_01",
+                size = 32,
+            },
+            [91] = {
+                xy = { 73, -91 },
+                isNPC = true,
+                isNPC_help = true,
+                isNPC_text = L["宝珠"],
+                isNPC_icon = "Interface\\Icons\\inv_misc_orb_01",
+                size = 32,
+            },
+            [92] = {
+                xy = { 532, -438 },
+                isNPC = true,
+                isNPC_help = true,
+                isNPC_text = L["宝珠"],
+                isNPC_icon = "Interface\\Icons\\inv_misc_orb_01",
+                size = 32,
+            },
+            [93] = {
+                xy = { 72, -455 },
+                isNPC = true,
+                isNPC_help = true,
+                isNPC_text = L["宝珠"],
+                isNPC_icon = "Interface\\Icons\\inv_misc_orb_01",
+                size = 32,
+            },
+            [98] = {
+                xy = {374,-310 },
+                isNPC = true,
+                isNPC_help = true,
+                isNPC_text = L["近战"],
+                isNPC_icon = "Interface\\Icons\\ability_steelmelee",
+            },
+            [99] = {
+                xy = { 226,-309 },
+                isNPC = true,
+                isNPC_help = true,
+                isNPC_text = L["坦克"],
+                isNPC_icon = "Interface\\Icons\\Spell_Deathknight_BloodPresence",
+            },
+            [100] = { xy = { 301, -271 }, isNPC = "b" .. bossIndex, size = 70, },
+        }
+
+        --[[
+
+
+]]
+
+        local function AutoFuc()
+            local tbl = TJ.SortRaidRosterInfo({ 'MAGE' }, "", true)
+            for i, v in ipairs(tbl) do
+                TJ.SetMapIconPlayer(v, { min = 7, max = 8 }, 2)
+            end
+            local tbl = TJ.SortRaidRosterInfo(nil, "healer", true)
+            for i, v in ipairs(tbl) do
+                TJ.SetMapIconPlayer(v, nil, 2)
+            end
+            local tbl = TJ.SortRaidRosterInfo(nil, "dps2", true)
+            for i, v in ipairs(tbl) do
+                TJ.SetMapIconPlayer(v, nil, 2)
+            end
+        end
+        local text = {
+            L["1-6：治疗。"],
+            L["7-8：法师。"],
+            L["8-17：远程DPS。"],
+        }
+
+        TJ.CreateTitle(FB, bossIndex, AutoFuc, "spell_nature_wispsplode", L["入口站位"],
+            text)
+        local width = 600
+        local map = TJ.CreateMap(FB, bossIndex, tbl, width, width / 879 * 779, 2, nil, nil, "v2.0.3")
+    end
+
+    TJ.CreateMapTab(mainFrame, FB, bossIndex)
 
     -- 坦克
     do

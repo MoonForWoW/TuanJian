@@ -569,28 +569,28 @@ function TJ.InitOptions()
         end)
     end
     h = h + 30
-    -- BOSS战成功后弹出AI界面
+    -- BOSS战成功后弹出界面
     do
         local name = "showUIAfterKillBossSuccess"
         TJ.options[name .. "reset"] = 0
         TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
         local ontext = {
-            L["BOSS战成功后弹出AI界面"],
-            L["成功击杀BOSS后主动显示AI插件，方便你查看战斗分析。"],
+            L["BOSS战成功后弹出界面"],
+            L["成功击杀BOSS后主动显示插件，方便你查看战斗分析。"],
         }
-        local f = O.CreateCheckButton(name, (L["BOSS战成功后弹出AI界面"]), optionFrame, 30, height - h, ontext)
+        local f = O.CreateCheckButton(name, (L["BOSS战成功后弹出界面"]), optionFrame, 30, height - h, ontext)
         TJ.options["button" .. name] = f
     end
-    -- BOSS战失败后弹出AI界面
+    -- BOSS战失败后弹出界面
     do
         local name = "showUIAfterKillBossFalse"
         TJ.options[name .. "reset"] = 0
         TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
         local ontext = {
-            L["BOSS战失败后弹出AI界面"],
-            L["团灭后主动显示AI插件，方便你查看战斗分析。"],
+            L["BOSS战失败后弹出界面"],
+            L["团灭后主动显示插件，方便你查看战斗分析。"],
         }
-        local f = O.CreateCheckButton(name, (L["BOSS战失败后弹出AI界面"]), optionFrame, 30, height - h, ontext)
+        local f = O.CreateCheckButton(name, (L["BOSS战失败后弹出界面"]), optionFrame, 30, height - h, ontext)
         TJ.options["button" .. name] = f
         local parent = TJ.options["button" .. "showUIAfterKillBossSuccess"]
         f:ClearAllPoints()

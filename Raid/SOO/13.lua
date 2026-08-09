@@ -33,6 +33,82 @@ local bossIndex = 13
 TJ.Load[FB .. bossIndex] = function()
     local mainFrame = TJ.frame[FB][bossIndex]
 
+    -- 站位图
+    do
+        local tbl = {
+            { point = "TOPLEFT", xy = { 281, -136 } },
+            { point = "TOPLEFT", xy = { 421, -131 } },
+            { point = "TOPLEFT", xy = { 279, -288 } },
+            { point = "TOPLEFT", xy = { 418, -287 } },
+            { point = "TOPLEFT", xy = { 189, -202 } },
+            { point = "TOPLEFT", xy = { 513, -205 } },
+            { point = "TOPLEFT", xy = { 202, -127 } },
+            { point = "TOPLEFT", xy = { 501, -134 } },
+            { point = "TOPLEFT", xy = { 200, -281 } },
+            { point = "TOPLEFT", xy = { 502, -277 } },
+            { point = "TOPLEFT", xy = { 266, -68 } },
+            { point = "TOPLEFT", xy = { 445, -69 } },
+            { point = "TOPLEFT", xy = { 257, -354 } },
+            { point = "TOPLEFT", xy = { 449, -358 } },
+            { point = "TOPLEFT", xy = { 351, -57 } },
+            { point = "TOPLEFT", xy = { 352, -363 } },
+            [100] = { xy = { 348, -211 }, isNPC = "b" .. bossIndex },
+        }
+
+        --[[
+
+]]
+        local xy = {
+            { 122, -203 }, -- 星星
+            { 583, -207 }, -- 大饼
+            { 724, -266 }, -- 紫菱
+            { 725, -215 }, -- 三角
+            { 725, -164 },
+            { 724, -115 },
+            { 724, -71 },
+            { 725, -21 },
+        }
+        for index = 1, 8 do
+            local left = mod((index - 1) / 4, 1);
+            local right = left + 0.25;
+            local top = floor((index - 1) / 4) * 0.25;
+            local bottom = top + 0.25;
+            tbl[index + 80] = {
+                xy = xy[index],
+                isNPC = true,
+                isNPC_help = true,
+                isNPC_icon = [[Interface\TargetingFrame\UI-RaidTargetingIcons]],
+                coord = { left, right, top, bottom },
+                notMask = true,
+            }
+        end
+
+        local function AutoFuc()
+            local tbl = TJ.SortRaidRosterInfo({ "SHAMAN", "DRUID", "PRIEST", }, "healer", true)
+            for i, v in ipairs(tbl) do
+                TJ.SetMapIconPlayer(v)
+            end
+            local tbl = TJ.SortRaidRosterInfo({ "SHAMAN", "PRIEST" }, "dps2", true)
+            for i, v in ipairs(tbl) do
+                TJ.SetMapIconPlayer(v)
+            end
+            local tbl = TJ.SortRaidRosterInfo({ "HUNTER", "DRUID", "MAGE", "WARLOCK", }, "dps2", true)
+            for i, v in ipairs(tbl) do
+                TJ.SetMapIconPlayer(v)
+            end
+        end
+        local text = {
+            L["1-4号位：治疗。"],
+            L["5-6号位：优先元素萨/暗牧。"],
+            L["剩余位置：远程DPS。"],
+        }
+
+        TJ.CreateTitle(FB, bossIndex, AutoFuc, "spell_nature_wispsplode", L["站位"],
+            text)
+        local width = 700
+        local map = TJ.CreateMap(FB, bossIndex, tbl, width, width / 1823 * 1070, nil, nil, nil, "v2.2.5")
+    end
+
     -- -- 本周击杀顺序
     -- do
     --     local text = {
@@ -46,7 +122,7 @@ TJ.Load[FB .. bossIndex] = function()
     --     end
     -- end
 
---[=[     -- 坦克
+    --[=[     -- 坦克
     do
         local function AutoFuc(title)
             local tbl = TJ.SortRaidRosterInfo(title.classTbl, "tank", true)
@@ -185,7 +261,7 @@ TJ.Load[FB .. bossIndex] = function()
     -- end
 
     TJ.CreateSPTitle(FB, bossIndex, nil, nil)
---[=[ 
+    --[=[
     -- 瞄准
     do
         local info = {

@@ -31,7 +31,7 @@ local bossIndex = 1
 
 TJ.Load[FB .. bossIndex] = function()
     local mainFrame = TJ.frame[FB][bossIndex]
-
+--[=[ 
     -- 站位图
     do
         local tbl = {
@@ -122,7 +122,7 @@ TJ.Load[FB .. bossIndex] = function()
         local width = 650
         local map = TJ.CreateMap(FB, bossIndex, tbl, width, width / 1156 * 761, nil, nil, nil, "v2.0.3")
     end
-
+ ]=]
 
 
     TJ.CreateSPTitle(FB, bossIndex, nil, nil)

@@ -1349,6 +1349,7 @@ TJ.Init(function()
         local miseryPriest = Provider("PRIEST", { 3 }, IsCaster, nil, { 33193 })
         local earthAndMoonDruid = Provider("DRUID", { 1 }, IsCaster, nil, { 48511 })
         local ebonPlagueDeathKnight = Provider("DEATHKNIGHT", { 3 }, nil, IsDeathKnightRole, { 51161 })
+        local cryptFeverDeathKnight = Provider("DEATHKNIGHT", { 3 }, nil, IsDeathKnightRole, { 49632 })
         local spellCritMage = Provider("MAGE", { 1, 2, 3 }, IsCaster, nil, { 12873, 28593 })
         local improvedShadowBoltWarlock = Provider("WARLOCK", { 1, 2, 3 }, IsCaster, nil, { 17803 })
 
@@ -1462,6 +1463,12 @@ TJ.Init(function()
                         providers = { improvedFaerieFireDruid, miseryPriest },
                     },
                     {
+                        spellID = 22959,
+                        text = L["5%法术易暴"],
+                        source = JoinSources(ClassSource("MAGE", L["法师"]), ClassSource("WARLOCK", L["术士"])),
+                        providers = { spellCritMage, improvedShadowBoltWarlock },
+                    },
+                    {
                         spellID = 60433,
                         text = L["13%法术易伤"],
                         source = JoinSources(ClassSource("DRUID", L["鸟德"]), ClassSource("DEATHKNIGHT", L["邪DK"]),
@@ -1469,10 +1476,10 @@ TJ.Init(function()
                         providers = { earthAndMoonDruid, ebonPlagueDeathKnight, anyWarlock },
                     },
                     {
-                        spellID = 22959,
-                        text = L["5%法术易暴"],
-                        source = JoinSources(ClassSource("MAGE", L["法师"]), ClassSource("WARLOCK", L["术士"])),
-                        providers = { spellCritMage, improvedShadowBoltWarlock },
+                        spellID = 49632,
+                        text = L["30%疾病易伤"],
+                        source = ClassSource("DEATHKNIGHT", L["邪DK"]),
+                        providers = { cryptFeverDeathKnight },
                     },
                 },
             },

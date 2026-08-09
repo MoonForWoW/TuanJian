@@ -194,7 +194,7 @@ end
 ]]
 function TJ.ENCOUNTER_START(self, event, bossID, bossName, difficultyID, groupSize, _, isDBM)
     if BGDEBUG and IsInRaid(1) then
-        print("ENCOUNTER_START", bossID, bossName, difficultyID, groupSize, isDBM and 'isDBM' or nil)
+        print("ENCOUNTER_START", bossID, bossName, difficultyID, groupSize, isDBM)
     end
     if not bossID then return end
     if lastStartTime[bossID] and GetTime() - lastStartTime[bossID] < 5 then
@@ -274,7 +274,7 @@ end
 
 function TJ.ENCOUNTER_END(self, event, bossID, bossName, difficultyID, groupSize, success, isDBM)
     if BGDEBUG and IsInRaid(1) then
-        print("ENCOUNTER_END", bossID, bossName, difficultyID, groupSize, success, isDBM and 'isDBM' or nil)
+        print("ENCOUNTER_END", bossID, bossName, difficultyID, groupSize, success, isDBM)
     end
     if not bossID then return end
     if TJ.ScheduleBurstPotionMonitorReset then

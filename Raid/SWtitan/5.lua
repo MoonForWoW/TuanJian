@@ -32,6 +32,30 @@ local bossIndex = 5
 TJ.Load[FB .. bossIndex] = function()
     local mainFrame = TJ.frame[FB][bossIndex]
 
+    -- 自动标记
+    local name = "rt" .. FB .. bossIndex
+    do
+        mainFrame.autoRT = name
+        local instanceID = TJ.FBinfo[FB].ID
+        TJ.autoRaidTargetInfo[instanceID] = TJ.autoRaidTargetInfo[instanceID] or {}
+        TJ.autoRaidTargetInfo[instanceID][25799] = {
+            [8] = true,
+            [7] = true,
+            np = true,
+        }
+
+        TJ.options[name .. "reset"] = 1
+        TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
+        local icon = TJ.SetRaidTargetingTex(8,7)
+        local ontext = {
+        }
+        local f = ns.O.CreateCheckButton(name, format(L["战斗中把影刃法师标记为%s（需要团长/助理）"], icon),
+            mainFrame, 40, -150, ontext)
+        f:ClearAllPoints()
+        f:SetPoint("BOTTOMLEFT", TJ.spChild.title, "TOPRIGHT", 0, 15)
+        f:SetHitRectInsets(0, 0, 0, 0)
+    end
+
     -- 坦克
     do
         local function AutoFuc(title)

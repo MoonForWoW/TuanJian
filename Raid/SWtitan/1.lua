@@ -233,23 +233,16 @@ TJ.Load[FB .. bossIndex] = function()
                     spell = {
                         {
                             spellID = { 46021, },
+                            colorNum=1,
                         },
-                    },
-                    destNpcType = { "Player" },
-                },
-                title = { name = L['灵魂世界'] },
-            },
-            {
-                aura = {
-                    type = "d",
-                    spell = {
                         {
                             spellID = { 44867, },
+                            colorNum = 5,
                         },
                     },
                     destNpcType = { "Player" },
                 },
-                title = { name = L['灵魂疲惫'], icon = 44867 },
+                title = { name = L['进内场(黄色是进了内场，灰色是灵魂疲惫)'] },
             },
         }
         local f = TJ.CreateTitle(FB, bossIndex, nil, "spell_shadow_charm", L["进内场"],

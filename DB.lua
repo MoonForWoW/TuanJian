@@ -33,7 +33,7 @@ TJ.Init(function()
             spFB["TKtitan"] = "SSC"
         elseif TJ.IsWLK then
             if TJ.IsTitan then
-                TJ.nowPhase = "P4"
+                TJ.nowPhase = "P5"
                 AddDB("SWtitan", 580, "P5")
                 AddDB("ZAMtitan", 568, "P5")
                 spFB["ZAMtitan"] = "SWtitan"
@@ -62,7 +62,7 @@ TJ.Init(function()
             AddDB("FL", 720)
             AddDB("DS", 967)
         elseif TJ.IsMOP then
-            TJ.nowPhase = "P3"
+            TJ.nowPhase = "P5"
             AddDB("SOO", 1136, "P5")
             AddDB("TOT", 1098, "P3")
             AddDB("MSV", 1008, "P1")
@@ -72,9 +72,6 @@ TJ.Init(function()
             spFB["TES"] = "MSV"
 
             if BGDEBUG then
-                AddDB("SWtitan", 580, "P5")
-                AddDB("ZAMtitan", 568, "P5")
-                AddDB("TOC", 649, "P4")
             end
         end
 
@@ -278,7 +275,7 @@ TJ.Init(function()
             end
             -- 奥格
             do
-                local height = 600
+                local height = 550
                 AddDB("SOO", { 1602, }, L["伊墨苏斯"], width, height)
                 AddDB("SOO", { 1598, }, L["堕落的守护者"], width, height)
                 AddDB("SOO", { 1624, }, L["诺鲁什"], width, height)
@@ -296,25 +293,6 @@ TJ.Init(function()
             end
 
             if BGDEBUG then
-                AddDB("SWtitan", { 724, }, L["卡雷苟斯"], width, height)
-                AddDB("SWtitan", { 725, }, L["布鲁塔卢斯"], width, height)
-                AddDB("SWtitan", { 726, }, L["菲米丝"], width, height)
-                AddDB("SWtitan", { 727, }, L["艾瑞达双子"], width, height)
-                AddDB("SWtitan", { 728, }, L["穆鲁"], width, height)
-                AddDB("SWtitan", { 729, }, L["基尔加丹"], width, height)
-
-                AddDB("ZAMtitan", { 1189, }, L["埃基尔松"], width, height)
-                AddDB("ZAMtitan", { 1190, }, L["纳洛拉克"], width, height)
-                AddDB("ZAMtitan", { 1191, }, L["加亚莱"], width, height)
-                AddDB("ZAMtitan", { 1192, }, L["哈尔拉兹"], width, height)
-                AddDB("ZAMtitan", { 1193, }, L["妖术领主玛拉卡斯"], width, height)
-                AddDB("ZAMtitan", { 1194, }, L["祖尔金"], width, height)
-
-                AddDB("TOC", { 629, 1088, }, L["诺森德猛兽"], width, height)
-                AddDB("TOC", { 633, 1087, }, L["加拉克苏斯"], width, height)
-                AddDB("TOC", { 637, 1086, }, L["阵营冠军"], width, height)
-                AddDB("TOC", { 641, 1089, }, L["瓦格里双子"], width, height)
-                AddDB("TOC", { 645, 1085, }, L["阿努巴拉克"], width, TJ.IsTitan and height or 730)
             end
         end
     end

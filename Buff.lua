@@ -32,7 +32,7 @@ TJ.Init(function()
         { id = { [48934] = true, [48932] = true }, displayID = 48934, class = { "PALADIN" }, Pally = "22n222n222", tipKey = L["力量"], monitor = true, monitorFilter = "physical", monitorPet = true, }, -- 力量
         { id = { [25898] = true, [20217] = true }, displayID = 25898, class = { "PALADIN" }, Pally = "3333333333", tipKey = L["王者"], monitor = true, monitorPet = true, }, -- 王者
         { id = { [48938] = true, [48936] = true }, displayID = 48938, class = { "PALADIN" }, Pally = "nn1111111n", tipKey = L["智慧 回蓝"], shortName = L["智慧"], monitor = true, monitorFilter = "wisdom", }, -- 智慧
-        { id = { [48170] = true, [48169] = true }, displayID = 48170, class = { "PRIEST" }, tipKey = L["暗抗"], }, -- 暗抗
+        { id = { [48170] = true, [48169] = true }, displayID = 48170, class = { "PRIEST" }, tipKey = L["暗抗"], monitor = true, monitorOrder = 7.5, }, -- 暗抗
         { id = { [48162] = true, [48161] = true }, displayID = 48162, class = { "PRIEST" }, tipKey = L["耐力"], monitor = true, monitorPet = true, }, -- 耐力
         { id = { [48074] = true, [48073] = true }, displayID = 48074, class = { "PRIEST" }, tipKey = L["精神"], monitor = true, monitorFilter = "caster", }, -- 精神
         { id = { [48470] = true, [48469] = true }, displayID = 48470, class = { "DRUID" }, tipKey = L["爪子"], monitor = true, monitorPet = true, }, -- 爪子
@@ -649,6 +649,9 @@ TJ.Init(function()
         if not validFrameScale[monitorSaved.scale] then
             monitorSaved.scale = 1
         end
+        if monitorSaved.monitorPet == nil then
+            monitorSaved.monitorPet = 1
+        end
         monitorSaved.filters = monitorSaved.filters or {}
         local rows = {}
         local clickCD = {}
@@ -748,6 +751,11 @@ TJ.Init(function()
         local paladinPersonalBuffRule = {
             id = { [25780] = true },
             displayID = 25780, -- 正义之怒
+            ignoreExpiration = true,
+        }
+        local deathKnightPersonalBuffRule = {
+            id = { [48263] = true },
+            displayID = 48263, -- 冰霜灵气
             ignoreExpiration = true,
         }
         OpenMonitorMenu = function(anchor)
@@ -865,6 +873,17 @@ TJ.Init(function()
                     hasArrow = true,
                     notCheckable = true,
                     menuList = frameScaleMenu,
+                },
+                {
+                    text = L["监控宠物"],
+                    checked = function()
+                        return monitorSaved.monitorPet == 1
+                    end,
+                    isNotRadio = true,
+                    func = function()
+                        monitorSaved.monitorPet = monitorSaved.monitorPet == 1 and 0 or 1
+                        UpdateMonitor()
+                    end,
                 },
 
                 TJ.CreateDropDownSeparator(),
@@ -1224,6 +1243,9 @@ TJ.Init(function()
                 tinsert(monitorEntries, { buffIndex = buffIndex, buffInfo = buffInfo })
             end
         end
+        table.sort(monitorEntries, function(a, b)
+            return (a.buffInfo.monitorOrder or a.buffIndex) < (b.buffInfo.monitorOrder or b.buffIndex)
+        end)
         tinsert(monitorEntries, { buffInfo = flaskInfo })
         tinsert(monitorEntries, { buffInfo = personalBuffInfo })
         tinsert(monitorEntries, { buffInfo = focusMagicInfo })
@@ -1440,6 +1462,7 @@ TJ.Init(function()
             RegisterAuraInfo(rule)
         end
         RegisterAuraInfo(paladinPersonalBuffRule)
+        RegisterAuraInfo(deathKnightPersonalBuffRule)
 
         local function ScanUnitAuras(unit, focusMagicCasters)
             local matchedAuraInfo = {}
@@ -1485,6 +1508,8 @@ TJ.Init(function()
             if not rosterInfo then return end
             if rosterInfo.class == "PALADIN" then
                 return TJ.Istank(rosterInfo) and paladinPersonalBuffRule or nil
+            elseif rosterInfo.class == "DEATHKNIGHT" then
+                return TJ.Istank(rosterInfo) and deathKnightPersonalBuffRule or nil
             end
             return personalBuffRules[rosterInfo.class]
         end
@@ -1558,7 +1583,8 @@ TJ.Init(function()
                     })
                     local petClass = rosterInfo and petClassByOwnerClass[rosterInfo.class]
                     local petUnit = "raidpet" .. raidIndex
-                    local isValidPet = petClass and UnitExists(petUnit) and not UnitIsDeadOrGhost(petUnit)
+                    local isValidPet = monitorSaved.monitorPet == 1 and petClass and UnitExists(petUnit) and
+                        not UnitIsDeadOrGhost(petUnit)
                     if isValidPet and rosterInfo.class == "WARLOCK" then
                         isValidPet = TJ.GetNPCID(UnitGUID(petUnit)) == FELGUARD_NPC_ID
                     end
