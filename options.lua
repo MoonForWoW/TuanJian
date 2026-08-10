@@ -105,7 +105,7 @@ do
         end
         TJ.PlaySound(1)
     end
-    function O.CreateSlider(name, text, parent, minValue, maxValue, step, x, y, ontext, width)
+    function O.CreateSlider(name, text, parent, minValue, maxValue, step, x, y, ontext, width, isSmall)
         local f = CreateFrame("Frame", nil, parent)
         f:SetSize(30, 30)
         f:SetPoint("TOPLEFT", optionFrame, "TOPLEFT", x, y)
@@ -137,8 +137,8 @@ do
         end)
 
         local slider = CreateFrame("Slider", nil, f, "MinimalSliderTemplate")
-        slider:SetPoint("LEFT", f, "RIGHT", 30, 0)
-        slider:SetWidth(width or 180)
+        slider:SetPoint("LEFT", f, "RIGHT", isSmall and 20 or 30, 0)
+        slider:SetWidth(width or 150)
         slider:SetMinMaxValues(minValue, maxValue)
         slider:SetValueStep(step)
         slider:SetObeyStepOnDrag(true)
@@ -170,7 +170,7 @@ do
 
         local t = slider:CreateFontString()
         t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")
-        t:SetPoint("LEFT", slider, "RIGHT", 30, 0)
+        t:SetPoint("LEFT", slider, "RIGHT", isSmall and 20 or 30, 0)
         t:SetTextColor(1, .82, 0)
         t:SetText(TuanJian.options[name])
         slider.Text = t
@@ -497,7 +497,7 @@ function TJ.InitOptions()
             L["退团自动重置所有战术安排"],
             L["退团自动重置所有战术安排（包括任务安排、减伤链、站位图安排、BUFF安排、团减、增伤、个减等等）"],
         }
-        local f = O.CreateCheckButton(name, AddTexture('QUEST') .. L["退团自动重置所有战术安排"], optionFrame, 30, height - h, ontext)
+        local f = O.CreateCheckButton(name, L["退团自动重置所有战术安排"], optionFrame, 30, height - h, ontext)
         TJ.options["button" .. name] = f
     end
     h = h + 30
@@ -609,7 +609,7 @@ function TJ.InitOptions()
             L["当有玩家密语你指定内容时，自动邀请对方进组。"],
             L["需要你是团长或助理时，该功能才会生效。"],
         }
-        local f = O.CreateCheckButton(name, AddTexture('QUEST') .. L["密语关键词自动邀请"], optionFrame, 30, height - h, ontext)
+        local f = O.CreateCheckButton(name, L["密语关键词自动邀请"], optionFrame, 30, height - h, ontext)
         TJ.options["button" .. name] = f
 
         local keywordName = "autoInviteKeyword"
@@ -667,6 +667,68 @@ function TJ.InitOptions()
                         BNInviteFriend(bnetIDGameAccount)
                     end
                 end
+            end
+        end)
+    end
+    h = h + 30
+    -- 悬浮框
+    do
+        local name = "mainIcon"
+        TJ.options[name .. "reset"] = 0
+        TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
+        local f = O.CreateCheckButton(name, AddTexture('QUEST') .. L["显示悬浮框"], optionFrame, 30, -h, {
+            L["显示悬浮框"],
+        })
+        f:HookScript("OnClick", function(self)
+            TJ.MainIcon:SetShown(self:GetChecked())
+        end)
+
+        local name = "mainIconScale"
+        TJ.options[name .. "reset"] = 1
+        TuanJian.options[name] = tonumber(TuanJian.options[name]) or TJ.options[name .. "reset"]
+        local slider, f = O.CreateSlider(name, L["缩放"], optionFrame, .5, 1.5, .01, 30, -h, nil, 70, true)
+        SetParent(f, "mainIcon")
+        slider:HookScript("OnValueChanged", function(self, value)
+            if TJ.MainIcon then
+                TJ.MainIcon:SetScale(value)
+            end
+        end)
+        f:ClearAllPoints()
+        f:SetPoint('LEFT', TJ.options['buttonmainIcon'].Text, 'RIGHT', 20, 0)
+
+        local name = "mainIconFrameLevel"
+        TJ.options[name .. "reset"] = "HIGH"
+        TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
+        local f = CreateFrame("Frame", nil, f)
+        f:SetSize(20, 20)
+        f:SetPoint("LEFT", slider, "RIGHT", 80, 0)
+        local t = f:CreateFontString()
+        t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")
+        t:SetPoint("CENTER")
+        t:SetTextColor(1, 1, 1)
+        t:SetText(L["层级："])
+        f:SetWidth(t:GetStringWidth())
+        local dropDown = LibBG:Create_UIDropDownMenu(nil, optionFrame)
+        dropDown:SetPoint("LEFT", f, "RIGHT", -10, -2)
+        LibBG:UIDropDownMenu_SetWidth(dropDown, 90)
+        LibBG:UIDropDownMenu_SetText(dropDown, TuanJian.options[name])
+        LibBG:UIDropDownMenu_SetAnchor(dropDown, 0, 0, "TOP", dropDown, "BOTTOM")
+        TJ.dropDownToggle(dropDown)
+        TJ.options["button" .. name] = dropDown
+        SetParent(dropDown, "mainIcon")
+        LibBG:UIDropDownMenu_Initialize(dropDown, function(self, level)
+            for _, text in ipairs({ "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN", "FULLSCREEN_DIALOG", "TOOLTIP" }) do
+                local info = LibBG:UIDropDownMenu_CreateInfo()
+                info.text = text
+                info.func = function()
+                    TuanJian.options[name] = text
+                    LibBG:UIDropDownMenu_SetText(dropDown, text)
+                    if TJ.MainIcon then
+                        TJ.MainIcon:SetFrameStrata(text)
+                    end
+                end
+                info.checked = TuanJian.options[name] == text
+                LibBG:UIDropDownMenu_AddButton(info)
             end
         end)
     end
@@ -736,4 +798,9 @@ function TJ.InitOptions()
     h = h + 40
     -- 快捷键
     O.CreateBindKey(optionFrame, 30, -h, nil, "TUANJIAN", L["打开/关闭快捷键："])
+
+
+
+    h = h + 60
+    optionFrame:SetHeight(h)
 end

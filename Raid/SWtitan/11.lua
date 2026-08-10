@@ -45,8 +45,13 @@ TJ.Load[FB .. bossIndex] = function()
                 local className, class = UnitClass(tbl[9])
                 if class == 'PALADIN' then
                     SendChatMessage(msg:format(className, L['奉献']), "RAID_WARNING")
+                    SendChatMessage(msg:format(className, L['奉献']), "RAID_WARNING")
                 elseif class == 'WARRIOR' then
                     SendChatMessage(msg:format(className, L['旋风斩']), "RAID_WARNING")
+                    SendChatMessage(msg:format(className, L['旋风斩']), "RAID_WARNING")
+                elseif class == 'DEATHKNIGHT' then
+                    SendChatMessage(msg:format(className, L['驱散团员的鲜血印记']), "RAID_WARNING")
+                    SendChatMessage(msg:format(className, L['驱散团员的鲜血印记']), "RAID_WARNING")
                 end
             end
         end
@@ -55,7 +60,7 @@ TJ.Load[FB .. bossIndex] = function()
         TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
         local ontext = {
             L["灵魂虹吸点名团队提醒"],
-            L["当点名圣骑士或战士时，在RW频道自动发送提醒。"],
+            L["当点名圣骑士/战士/死亡骑士时，在RW频道自动发送提醒。"],
             L["需要你是团长或助理，该功能才生效。"],
         }
         local f = ns.O.CreateCheckButton(name, AddTexture(136213) .. L["灵魂虹吸点名团队提醒"] .. L["（需要团长/助理）"],
@@ -68,7 +73,7 @@ TJ.Load[FB .. bossIndex] = function()
  ]]
     end
 
-    -- 战术板
+    -- 减伤链
     local bossSpellID = 43383
     TJ.AddBoard(mainFrame, function()
         local s1, s2, s3 = ns.s1, ns.s2, ns.s3

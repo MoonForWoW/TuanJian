@@ -981,7 +981,7 @@ function TJ.SendMap(FB, bossIndex, mapIndex, childIndex, mapBossIndex, map)
     local msgs = {}
     while currentPos <= totalLen do
         local targetEndPos = currentPos + MAX_LENGTH - 1
-        if targetEndPos > endMarkStart and targetEndPos < endMarkEnd then
+        if targetEndPos >= endMarkStart and targetEndPos < endMarkEnd then
             targetEndPos = endMarkStart - 1
         end
         local sendStr = string.sub(code, currentPos, math.min(targetEndPos, totalLen))

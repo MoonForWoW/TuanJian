@@ -1676,6 +1676,73 @@ TJ.Init(function()
             canInspect = false
         end)
     end
+
+    -- 悬浮框
+    do
+        local frameName = "TJ.MainIcon"
+        local f = CreateFrame("Frame", frameName, UIParent, "BackdropTemplate")
+        f:SetBackdrop({
+            bgFile = "Interface/ChatFrame/ChatFrameBackground",
+            edgeFile = "Interface/ChatFrame/ChatFrameBackground",
+            edgeSize = 1,
+        })
+        f:SetBackdropColor(0, 0, 0, 0)
+        f:SetBackdropBorderColor(0, 0, 0, 0)
+        f:SetSize(100, 22)
+        f:SetFrameStrata(TuanJian.options.mainIconFrameLevel)
+        f:SetScale(TuanJian.options.mainIconScale)
+        f:SetClampedToScreen(true)
+        f:EnableMouse(true)
+        f:SetToplevel(true)
+        f:SetMovable(true)
+        f:RegisterForDrag("LeftButton")
+        f.homepoin = { "TOP", "TOP", 0, -25 }
+        local savedPoint = TuanJian.point[frameName]
+        if savedPoint then
+            f:SetPoint(savedPoint[1], UIParent, savedPoint[2], savedPoint[3], savedPoint[4])
+        else
+            f:SetPoint(f.homepoin[1], UIParent, f.homepoin[2], f.homepoin[3], f.homepoin[4])
+        end
+        f:SetShown(TuanJian.options.mainIcon == 1)
+        TJ.MainIcon = f
+
+        f:SetScript("OnDragStart", function(self)
+            self:StartMoving()
+            self.isMoving = true
+        end)
+        f:SetScript("OnDragStop", function(self)
+            self:StopMovingOrSizing()
+            local point, _, relativePoint, x, y = self:GetPoint(1)
+            TuanJian.point[frameName] = { point, relativePoint, x, y }
+            self.isMoving = false
+            self.wasDragged = true
+            After(0, function()
+                self.wasDragged = false
+            end)
+        end)
+        f:SetScript("OnMouseUp", function(self, button)
+            if self.isMoving or self.wasDragged then return end
+            if button == "LeftButton" then
+                TJ.MainFrame:SetShown(not TJ.MainFrame:IsVisible())
+            elseif button == "RightButton" then
+                TJ.MainFrame:Show()
+                TJ.ClickTabButton(TJ.optionMainFrameTabNum)
+            end
+            TJ.PlaySound(1)
+        end)
+
+        local icon = f:CreateTexture()
+        icon:SetSize(20, 20)
+        icon:SetPoint("LEFT")
+        icon:SetTexture([[Interface\AddOns\TuanJian\Media\icon\icon.tga]])
+
+        local t = f:CreateFontString()
+        t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")
+        t:SetPoint("LEFT", icon, "RIGHT", 0, -1)
+        t:SetTextColor(0, .75, 1)
+        t:SetText(AddonName)
+        f:SetWidth(icon:GetWidth() + t:GetWidth())
+    end
 end)
 
 -- 团队成员
