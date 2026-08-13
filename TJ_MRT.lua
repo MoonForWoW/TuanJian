@@ -204,7 +204,7 @@ TJ.Init(function()
             f:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -20)
             f:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -0, 30)
             f:EnableMouse(true)
-            local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+            local scroll = CreateFrame("ScrollFrame", nil, f, TJ.scrollTemplate)
             scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 5, -5)
             scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -25, 5)
             scroll.ScrollBar.scrollStep = TJ.scrollStep

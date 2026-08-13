@@ -30,7 +30,99 @@ local bossIndex = 14
  ]]
 
 TJ.Load[FB .. bossIndex] = function()
-    -- local mainFrame = TJ.frame[FB][bossIndex]
+    local mainFrame = TJ.frame[FB][bossIndex]
+
+    -- 站位图
+    do
+        local tbl = {
+            { point = "TOPLEFT", xy = { 104, -423 } },
+            { point = "TOPLEFT", xy = { 74, -471 } },
+            { point = "TOPLEFT", xy = { 136, -470 } },
+            { point = "TOPLEFT", xy = { 74, -520 } },
+            { point = "TOPLEFT", xy = { 140, -520 } },
+            { point = "TOPLEFT", xy = { 391, -426 } },
+            { point = "TOPLEFT", xy = { 363, -472 } },
+            { point = "TOPLEFT", xy = { 421, -474 } },
+            { point = "TOPLEFT", xy = { 365, -526 } },
+            { point = "TOPLEFT", xy = { 422, -527 } },
+            { point = "TOPLEFT", xy = { 245, -225 } },
+            { point = "TOPLEFT", xy = { 211, -258 } },
+            { point = "TOPLEFT", xy = { 279, -258 } },
+            { point = "TOPLEFT", xy = { 209, -307 } },
+            { point = "TOPLEFT", xy = { 279, -307 } },
+            { point = "TOPLEFT", xy = { 110, -38 } },
+            { point = "TOPLEFT", xy = { 77, -79 } },
+            { point = "TOPLEFT", xy = { 143, -79 } },
+            { point = "TOPLEFT", xy = { 76, -130 } },
+            { point = "TOPLEFT", xy = { 140, -129 } },
+            { point = "TOPLEFT", xy = { 392, -40 } },
+            { point = "TOPLEFT", xy = { 367, -83 } },
+            { point = "TOPLEFT", xy = { 420, -83 } },
+            { point = "TOPLEFT", xy = { 364, -132 } },
+            { point = "TOPLEFT", xy = { 429, -131 } },
+
+            --[[
+
+]]
+
+        }
+        local xy = {
+            { 525, -362 }, -- 星星
+            { 524, -312 }, -- 大饼
+            { 522, -265 }, -- 紫菱
+            { 523, -216 }, -- 三角
+            { 525, -168 },
+            { 525, -118 },
+            { 525, -68 },
+            { 523, -20 },
+        }
+        for index = 1, 8 do
+            local left = mod((index - 1) / 4, 1);
+            local right = left + 0.25;
+            local top = floor((index - 1) / 4) * 0.25;
+            local bottom = top + 0.25;
+            tbl[index + 90] = {
+                xy = xy[index],
+                isNPC = true,
+                isNPC_help = true,
+                isNPC_icon = [[Interface\TargetingFrame\UI-RaidTargetingIcons]],
+                coord = { left, right, top, bottom },
+                notMask = true,
+            }
+        end
+
+        local function AutoFuc()
+            local groups = {
+                { min = 1, max = 5 },
+                { min = 6, max = 10 },
+                { min = 11, max = 15 },
+                { min = 16, max = 20 },
+                { min = 21, max = 25 },
+            }
+            local groupIndex = 1
+            local assigned = {}
+
+            local function Assign(tbl)
+                for _, v in ipairs(tbl) do
+                    if not assigned[v.name] then
+                        TJ.SetMapIconPlayer(v, groups[groupIndex])
+                        assigned[v.name] = true
+                        groupIndex = groupIndex % #groups + 1
+                    end
+                end
+            end
+
+            Assign(TJ.SortRaidRosterInfo({ "WARRIOR", "MONK", "WARLOCK", "PALADIN", "SHAMAN", }, "dps+tank", true))
+            Assign(TJ.SortRaidRosterInfo({ "DEATHKNIGHT", "ROGUE", "MAGE", }, "dps+tank", true))
+            Assign(TJ.SortRaidRosterInfo(nil, "dps+tank", true))
+            Assign(TJ.SortRaidRosterInfo(nil, "healer", true))
+        end
+        local text = L["每堆怪尽量平均分配打断和治疗。"]
+        TJ.CreateTitle(FB, bossIndex, AutoFuc, "spell_nature_wispsplode", L["青龙寺"],
+            text)
+        local width = 500
+        local map = TJ.CreateMap(FB, bossIndex, tbl, width, width / 941 * 1200, nil, nil, nil, "v2.3.2")
+    end
 
     -- mainFrame.saveAura = {
     --     [145065] = true, -- 亚煞极之触

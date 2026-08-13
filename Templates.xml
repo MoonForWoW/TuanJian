@@ -122,6 +122,181 @@
 			<OnTextChanged function="SearchBoxTemplate_OnTextChanged"/>
 		</Scripts>
 	</EditBox>
+	
+	<Slider name="TuanJian_ModernScrollBarTemplate" orientation="VERTICAL" enableMouse="true" virtual="true">
+		<Size x="14" y="100"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Track" file="Interface\Buttons\WHITE8X8">
+					<Size x="4" y="1"/>
+					<Anchors>
+						<Anchor point="TOP" x="0" y="-2"/>
+						<Anchor point="BOTTOM" x="0" y="2"/>
+					</Anchors>
+					<Color r="0" g="0" b="0" a="0.35"/>
+				</Texture>
+			</Layer>
+		</Layers>
+		<ThumbTexture parentKey="Thumb" file="Interface\Buttons\WHITE8X8" alpha="0">
+			<Size x="8" y="24"/>
+		</ThumbTexture>
+		<Frames>
+			<Button parentKey="TrackButton" enableMouse="true" setAllPoints="true">
+				<Scripts>
+					<OnLoad function="TuanJian_ModernScrollTrackButton_OnLoad"/>
+					<OnMouseDown function="TuanJian_ModernScrollTrackButton_OnMouseDown"/>
+					<OnMouseWheel function="TuanJian_ModernScrollTrackButton_OnMouseWheel"/>
+				</Scripts>
+			</Button>
+			<Button parentKey="ThumbButton" enableMouse="true">
+				<Size x="14" y="24"/>
+				<Layers>
+					<Layer level="ARTWORK">
+						<Texture parentKey="Top" file="Interface\Buttons\WHITE8X8">
+							<Size x="8" y="4"/>
+							<Anchors>
+								<Anchor point="TOP"/>
+							</Anchors>
+						</Texture>
+						<Texture parentKey="Middle" file="Interface\Buttons\WHITE8X8">
+							<Size x="8" y="1"/>
+							<Anchors>
+								<Anchor point="TOP" x="0" y="-4"/>
+								<Anchor point="BOTTOM" x="0" y="4"/>
+							</Anchors>
+						</Texture>
+						<Texture parentKey="Bottom" file="Interface\Buttons\WHITE8X8">
+							<Size x="8" y="4"/>
+							<Anchors>
+								<Anchor point="BOTTOM"/>
+							</Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnLoad function="TuanJian_ModernScrollThumbButton_OnLoad"/>
+					<OnEnter function="TuanJian_ModernScrollThumbButton_OnEnter"/>
+					<OnLeave function="TuanJian_ModernScrollThumbButton_OnLeave"/>
+					<OnMouseDown function="TuanJian_ModernScrollThumbButton_OnMouseDown"/>
+					<OnMouseUp function="TuanJian_ModernScrollThumbButton_OnMouseUp"/>
+					<OnSizeChanged function="TuanJian_ModernScrollThumbButton_UpdateShape"/>
+				</Scripts>
+			</Button>
+		</Frames>
+		<Scripts>
+			<OnLoad function="TuanJian_ModernScrollBarTemplate_OnLoad"/>
+			<OnValueChanged function="TuanJian_ModernScrollBarTemplate_OnValueChanged"/>
+			<OnMouseWheel function="TuanJian_ModernScrollBarTemplate_OnMouseWheel"/>
+			<OnEnter function="TuanJian_ModernScrollBarTemplate_OnEnter"/>
+			<OnLeave function="TuanJian_ModernScrollBarTemplate_OnLeave"/>
+		</Scripts>
+	</Slider>
+
+	<ScrollFrame name="TuanJian_ModernScrollFrameTemplate" enableMouse="true" virtual="true">
+		<Frames>
+			<Slider parentKey="ScrollBar" inherits="TuanJian_ModernScrollBarTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativePoint="TOPRIGHT" x="6" y="0"/>
+					<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT" x="8" y="0"/>
+				</Anchors>
+			</Slider>
+		</Frames>
+		<Scripts>
+			<OnLoad function="TuanJian_ModernScrollFrameTemplate_OnLoad"/>
+			<OnScrollRangeChanged function="TuanJian_ModernScrollFrameTemplate_OnScrollRangeChanged"/>
+			<OnVerticalScroll function="TuanJian_ModernScrollFrameTemplate_OnVerticalScroll"/>
+			<OnMouseWheel function="TuanJian_ModernScrollFrameTemplate_OnMouseWheel"/>
+			<OnSizeChanged function="TuanJian_ModernScrollFrameTemplate_Update"/>
+			<OnShow function="TuanJian_ModernScrollFrameTemplate_Update"/>
+		</Scripts>
+	</ScrollFrame>
+
+	<Slider name="TuanJian_ModernHorizontalScrollBarTemplate" orientation="HORIZONTAL" enableMouse="true" virtual="true">
+		<Size x="100" y="14"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Track" file="Interface\Buttons\WHITE8X8">
+					<Size x="1" y="4"/>
+					<Anchors>
+						<Anchor point="LEFT" x="2" y="0"/>
+						<Anchor point="RIGHT" x="-2" y="0"/>
+					</Anchors>
+					<Color r="0" g="0" b="0" a="0.35"/>
+				</Texture>
+			</Layer>
+		</Layers>
+		<ThumbTexture parentKey="Thumb" file="Interface\Buttons\WHITE8X8" alpha="0">
+			<Size x="24" y="8"/>
+		</ThumbTexture>
+		<Frames>
+			<Button parentKey="TrackButton" enableMouse="true" setAllPoints="true">
+				<Scripts>
+					<OnLoad function="TuanJian_ModernHorizontalScrollTrackButton_OnLoad"/>
+					<OnMouseDown function="TuanJian_ModernHorizontalScrollTrackButton_OnMouseDown"/>
+					<OnMouseWheel function="TuanJian_ModernHorizontalScrollTrackButton_OnMouseWheel"/>
+				</Scripts>
+			</Button>
+			<Button parentKey="ThumbButton" enableMouse="true">
+				<Size x="24" y="14"/>
+				<Layers>
+					<Layer level="ARTWORK">
+						<Texture parentKey="Left" file="Interface\Buttons\WHITE8X8">
+							<Size x="4" y="8"/>
+							<Anchors>
+								<Anchor point="LEFT"/>
+							</Anchors>
+						</Texture>
+						<Texture parentKey="Middle" file="Interface\Buttons\WHITE8X8">
+							<Size x="1" y="8"/>
+							<Anchors>
+								<Anchor point="LEFT" x="4" y="0"/>
+								<Anchor point="RIGHT" x="-4" y="0"/>
+							</Anchors>
+						</Texture>
+						<Texture parentKey="Right" file="Interface\Buttons\WHITE8X8">
+							<Size x="4" y="8"/>
+							<Anchors>
+								<Anchor point="RIGHT"/>
+							</Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnLoad function="TuanJian_ModernHorizontalScrollThumbButton_OnLoad"/>
+					<OnEnter function="TuanJian_ModernHorizontalScrollThumbButton_OnEnter"/>
+					<OnLeave function="TuanJian_ModernHorizontalScrollThumbButton_OnLeave"/>
+					<OnMouseDown function="TuanJian_ModernHorizontalScrollThumbButton_OnMouseDown"/>
+					<OnMouseUp function="TuanJian_ModernHorizontalScrollThumbButton_OnMouseUp"/>
+					<OnSizeChanged function="TuanJian_ModernHorizontalScrollThumbButton_UpdateShape"/>
+				</Scripts>
+			</Button>
+		</Frames>
+		<Scripts>
+			<OnLoad function="TuanJian_ModernHorizontalScrollBarTemplate_OnLoad"/>
+			<OnValueChanged function="TuanJian_ModernHorizontalScrollBarTemplate_OnValueChanged"/>
+			<OnMouseWheel function="TuanJian_ModernHorizontalScrollBarTemplate_OnMouseWheel"/>
+			<OnSizeChanged function="TuanJian_ModernHorizontalScrollBarTemplate_OnSizeChanged"/>
+		</Scripts>
+	</Slider>
+
+	<ScrollFrame name="TuanJian_ModernHorizontalScrollFrameTemplate" enableMouse="true" virtual="true">
+		<Frames>
+			<Slider parentKey="ScrollBar" inherits="TuanJian_ModernHorizontalScrollBarTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" x="0" y="-6"/>
+					<Anchor point="TOPRIGHT" relativePoint="BOTTOMRIGHT" x="0" y="-6"/>
+				</Anchors>
+			</Slider>
+		</Frames>
+		<Scripts>
+			<OnLoad function="TuanJian_ModernHorizontalScrollFrameTemplate_OnLoad"/>
+			<OnScrollRangeChanged function="TuanJian_ModernHorizontalScrollFrameTemplate_OnScrollRangeChanged"/>
+			<OnHorizontalScroll function="TuanJian_ModernHorizontalScrollFrameTemplate_OnHorizontalScroll"/>
+			<OnMouseWheel function="TuanJian_ModernHorizontalScrollFrameTemplate_OnMouseWheel"/>
+			<OnSizeChanged function="TuanJian_ModernHorizontalScrollFrameTemplate_Update"/>
+			<OnShow function="TuanJian_ModernHorizontalScrollFrameTemplate_Update"/>
+		</Scripts>
+	</ScrollFrame>
 </Ui>
 
 <!-- 

@@ -316,11 +316,11 @@ TJ.Init(function()
                 edgeSize = 1,
             })
             bt:SetBackdropBorderColor(GetClassRGB(nil, "player", TJ.borderAlpha))
-            bt:SetSize(width or 70, 28)
+            bt:SetSize(width or 60, 28)
             if #TJ.tabButtons == 0 then
                 bt:SetPoint("TOPLEFT", TJ.MainFrame, "BOTTOMLEFT", 20, 1)
             else
-                bt:SetPoint("LEFT", TJ.tabButtons[#TJ.tabButtons].button, "RIGHT", TJ.IsWLK and 3 or 5, 0)
+                bt:SetPoint("LEFT", TJ.tabButtons[#TJ.tabButtons].button, "RIGHT", 2, 0)
             end
             bt.bg = bt:CreateTexture(nil, "BACKGROUND")
             bt.bg:SetAllPoints()

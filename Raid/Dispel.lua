@@ -338,7 +338,7 @@ TJ.Init(function()
             f:SetSize(totalWidth + offset * 2, mainFrame:GetHeight() - 35)
             f:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", offset, -30)
             mainFrame.f = f
-            local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+            local scroll = CreateFrame("ScrollFrame", nil, f, TJ.scrollTemplate)
             scroll:SetPoint("TOPLEFT", 0, -35)
             scroll:SetPoint("BOTTOMRIGHT", -0, 0)
             scroll.ScrollBar.scrollStep = 100
@@ -357,7 +357,7 @@ TJ.Init(function()
             t:SetText(L["没有数据。"])
             mainFrame.notText = t
 
-            local spellScroll = CreateFrame("ScrollFrame", nil, mainFrame, "UIPanelScrollFrameTemplate")
+            local spellScroll = CreateFrame("ScrollFrame", nil, mainFrame, TJ.scrollTemplate)
             spellScroll:SetPoint("TOPLEFT", f, "TOPRIGHT", 5, -5)
             spellScroll:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -5, 40)
             spellScroll.ScrollBar.scrollStep = 100

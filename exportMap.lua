@@ -57,7 +57,7 @@ function TJ.ExportMapUI()
             frame:SetBackdropBorderColor(1, 1, 1, 0.5)
             frame:SetPoint("TOPLEFT", 8, -28)
             frame:SetSize(bg:GetWidth() - 16, bg:GetHeight() - 70)
-            scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+            scroll = CreateFrame("ScrollFrame", nil, frame, TJ.scrollTemplate)
             scroll:SetPoint("TOPLEFT", 5, -4)
             scroll:SetPoint("BOTTOMRIGHT", -27, 4)
             bt.scroll = scroll

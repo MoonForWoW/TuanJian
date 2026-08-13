@@ -98,6 +98,7 @@ TJ.dispelFB = {}
 TJ.teamList = {}
 TJ.DBMCallback = {}
 TJ.SSpowerSpell = TJ.IsTitan and 48090
+TJ.scrollTemplate = "BiaoGe_ModernScrollFrameTemplate" or "UIPanelScrollFrameTemplate"
 
 for i = 1, 8 do
     tinsert(TJ.teamList, i .. L["队"])

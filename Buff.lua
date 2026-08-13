@@ -546,13 +546,21 @@ TJ.Init(function()
         end
 
         local fishFeastSpellID = 57426
+        local link
         TJ.RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", function(self, event, ...)
             if not (TuanJian.options.sendTips == 1 and TJ.IsLeader() and IsInRaid(1)) then return end
             local _, subevent, _, _, sourceName, _, _, _, _, _, _, spellID = ...
             if subevent ~= "SPELL_CAST_SUCCESS" or spellID ~= fishFeastSpellID or not sourceName then return end
             local name = TJ.GSN(sourceName)
             if not UnitInRaid(name) then return end
-            SendChatMessage(format(L["%s放鱼了，大家快吃！"], name), "RAID_WARNING")
+            if link then
+                SendChatMessage(format(L["%s放鱼了%s，大家快吃！"], name, link), "RAID_WARNING")
+            else
+                Item:CreateFromItemID(43015):ContinueOnItemLoad(function()
+                    link = select(2, GetItemInfo(43015))
+                    SendChatMessage(format(L["%s放鱼了%s，大家快吃！"], name, link), "RAID_WARNING")
+                end)
+            end
         end)
 
         local f = CreateFrame("Frame")
@@ -1006,6 +1014,7 @@ TJ.Init(function()
                 broadcastButton:SetPushedTexture("Interface\\Common\\VoiceChat-Speaker")
                 broadcastButton:SetHighlightTexture("Interface\\Common\\VoiceChat-Speaker")
                 broadcastButton:SetScript("OnClick", function()
+                    if not TJ.IsLeader() then return end
                     if broadcastCD then
                         UIErrorsFrame:AddMessage(L["批量提醒正在冷却中"], 1, 0, 0)
                         return
@@ -1031,7 +1040,7 @@ TJ.Init(function()
                     else
                         GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0, 0)
                     end
-                    GameTooltip:AddLine(L["批量提醒"], 1, 1, 1)
+                    GameTooltip:AddLine(L["批量提醒%s"]:format(TJ.IsLeader() and '' or L['|cffff0000（仅团长/助理可用）']), 1, 1, 1)
                     GameTooltip:AddLine(L["密语提醒所有团队BUFF的负责人（不含食物）。"], 1, .82, 0, true)
                     local c = 0
                     for _, row in ipairs(rows) do
@@ -1218,18 +1227,20 @@ TJ.Init(function()
                 GameTooltip:AddLine(self.buffInfo.inactiveText, .7, .7, .7)
                 show = true
             end
-            if self.buffInfo.whisperMissing and #self.missing > 0 then
-                GameTooltip:AddLine(' ')
-                if #self.missing <= 5 then
-                    GameTooltip:AddLine(format(L["左键密语缺少%s的玩家"], self.name), 1, .82, 0)
-                else
-                    GameTooltip:AddLine(format(L["缺少%s的人数太多，无法密语。"], self.name), 1, .2, .2, true)
-                end
-            elseif not self.buffInfo.noWhisper then
-                local responsibility, responsibilityUnit = GetResponsibilityUnit(self.buffIndex)
-                if responsibility then
+            if TJ.IsLeader() then
+                if self.buffInfo.whisperMissing and #self.missing > 0 then
                     GameTooltip:AddLine(' ')
-                    GameTooltip:AddLine(format(L["左键密语责任人：%s"], ns.SetClassCFF(responsibility)), 1, .82, 0)
+                    if #self.missing <= 5 then
+                        GameTooltip:AddLine(format(L["左键密语缺少%s的玩家"], self.name), 1, .82, 0)
+                    else
+                        GameTooltip:AddLine(format(L["缺少%s的人数太多，无法密语。"], self.name), 1, .2, .2, true)
+                    end
+                elseif not self.buffInfo.noWhisper then
+                    local responsibility, responsibilityUnit = GetResponsibilityUnit(self.buffIndex)
+                    if responsibility then
+                        GameTooltip:AddLine(' ')
+                        GameTooltip:AddLine(format(L["左键密语责任人：%s"], ns.SetClassCFF(responsibility)), 1, .82, 0)
+                    end
                 end
             end
             if show then
@@ -1319,10 +1330,12 @@ TJ.Init(function()
                         StopMonitorMoving()
                         return
                     end
-                    if self.buffInfo.whisperMissing then
-                        SendMissingPlayersWhisper(self)
-                    elseif not self.buffInfo.noWhisper then
-                        SendMissingWhisper(self)
+                    if TJ.IsLeader() then
+                        if self.buffInfo.whisperMissing then
+                            SendMissingPlayersWhisper(self)
+                        elseif not self.buffInfo.noWhisper then
+                            SendMissingWhisper(self)
+                        end
                     end
                 elseif button == "RightButton" then
                     OpenMonitorMenu(self)

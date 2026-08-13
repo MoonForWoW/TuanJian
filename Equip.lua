@@ -222,6 +222,10 @@ TJ.Init(function()
         btA.enchantText:SetText(btB.enchantText:GetText() or "")
         btB.enchantText:SetText(tmp or "")
 
+        local tmpShown = btA.onlineText:IsShown()
+        btA.onlineText:SetShown(btB.onlineText:IsShown())
+        btB.onlineText:SetShown(tmpShown)
+
         local tmpTex = btA.icon:GetTexture()
         btA.icon:SetTexture(btB.icon:GetTexture())
         btB.icon:SetTexture(tmpTex)
@@ -267,6 +271,7 @@ TJ.Init(function()
             self.name = nil
             self.class = nil
             self.iLevel = nil
+            self.onlineText:Hide()
             self.nameText:SetText("")
             self.infoText:SetText("")
             self.enchantText:SetText("")
@@ -336,6 +341,7 @@ TJ.Init(function()
                     self.infoText:SetText(L["距离太远"])
                     self.infoText:SetTextColor(.5, .5, .5)
                 end
+                self.onlineText:SetShown(not (self.unit and UnitIsConnected(self.unit)))
             end
         end
 
@@ -501,7 +507,6 @@ TJ.Init(function()
             highlightFrame:Hide()
             -- 还原按钮到原始位置
             if source then
-                source:SetAlpha(1)
                 source:SetParent(mainFrame)
                 source:SetFrameStrata("MEDIUM")
                 RestoreButtonPosition(source)
@@ -637,6 +642,14 @@ TJ.Init(function()
         bt.talent = tex
 
         local text = bt:CreateFontString()
+        text:SetFont(BIAOGE_TEXT_FONT, 12, "OUTLINE")
+        text:SetPoint("BOTTOM", bt.talent, "BOTTOM", 0, 0)
+        text:SetTextColor(.5, .5, .5)
+        text:SetText(L['离线'])
+        text:Hide()
+        bt.onlineText = text
+
+        local text = bt:CreateFontString()
         text:SetFont(BIAOGE_TEXT_FONT, 14, "OUTLINE")
         text:SetPoint("TOPLEFT", bt.talent, "TOPRIGHT", 2, 0)
         text:SetWidth(bt:GetWidth() - bt.talent:GetWidth() - 5)
@@ -768,6 +781,8 @@ TJ.Init(function()
         end
     end
 
+    C_Timer.NewTicker(5, TJ.UpdateEquipFrame)
+
     -- 计算平均装等
     do
         local slots1 = { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }
@@ -828,6 +843,7 @@ TJ.Init(function()
 
     local f = CreateFrame("Frame")
     f:RegisterEvent("GROUP_ROSTER_UPDATE")
+    f:RegisterEvent("UNIT_CONNECTION")
     f:RegisterEvent("PLAYER_ENTERING_WORLD")
     f:RegisterEvent("PLAYER_REGEN_DISABLED")
     f:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -839,6 +855,9 @@ TJ.Init(function()
                     TJ.UpdateRaidDamageBuffFrame()
                 end
             end)
+        elseif event == "UNIT_CONNECTION" then
+            local unit = ...
+            TJ.UpdateEquipFrame(TJ.GN(unit))
         elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
             UpdateTipsText()
         elseif event == "PLAYER_ENTERING_WORLD" then
@@ -1642,7 +1661,7 @@ TJ.Init(function()
                 end
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:ClearLines()
-                GameTooltip:AddLine(self.entry.text, 1, 1,1)
+                GameTooltip:AddLine(self.entry.text, 1, 1, 1)
                 GameTooltip:AddLine(L["来源："] .. self.entry.source, 1, 1, 1)
                 if next(self.confirmed or {}) then
                     GameTooltip:AddLine(L["当前拥有："] .. JoinMembers(self.confirmed), 0, 1, 0)
