@@ -18,7 +18,7 @@ do --简体说明书
         "|cff00BFFF< 说明书 >（本插件支持MOP/CTM/WLK/时光服）",
         " ",
         "|cffFFFFFF-作者：|r苍穹之霜",
-        "|cffFFFFFF-打开命令：|r/TuanJian或/TJ，或游戏设置里绑定按键。小地图图标： " .. "|TInterface\\AddOns\\TuanJian\\Media\\icon\\icon.tga:0|t",
+        "|cffFFFFFF-打开命令：|r/TuanJian或/TJ，或游戏设置里绑定按键。小地图图标： " .. "|TInterface\\AddOns\\TuanJianPlus\\Media\\icon\\icon.tga:0|t",
         "|cffFFFFFF-快捷操作：|r右键输入框可以清除内容",
         " ",
         -- "|cff00FF00" ..[[]] ,

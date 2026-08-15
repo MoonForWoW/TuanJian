@@ -7,7 +7,7 @@ if not ldb then return end
 
 local pt = print
 
-local plugin = ldb:NewDataObject(AddonName, { text = AddonName, type = "data source", icon = "Interface\\AddOns\\TuanJian\\Media\\icon\\icon.tga" })
+local plugin = ldb:NewDataObject(AddonName, { text = AddonName, type = "data source", icon = "Interface\\AddOns\\TuanJianPlus\\Media\\icon\\icon.tga" })
 
 function plugin:OnClick(button) --function plugin.OnClick(self, button)
     if button == "LeftButton" then

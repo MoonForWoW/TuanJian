@@ -274,7 +274,7 @@ function TJ.InitOptions()
     TJ.ExportMapUI()
 
     local height = 0
-    local h = 20
+    local h = 10
     -- 通报任务时密语责任人
     do
         local name = "sendWhisper"

@@ -236,9 +236,9 @@ local function AddTexture(Texture, y, coord)
     elseif Texture == "QUEST" then -- 黄色感叹号
         tex = "Interface\\GossipFrame\\AvailableQuestIcon"
     elseif Texture == "BOX" then
-        tex = "Interface\\AddOns\\TuanJian\\Media\\icon\\BOX"
+        tex = "Interface\\AddOns\\TuanJianPlus\\Media\\icon\\BOX"
     elseif Texture == "DD" then
-        tex = "Interface\\AddOns\\TuanJian\\Media\\icon\\DD"
+        tex = "Interface\\AddOns\\TuanJianPlus\\Media\\icon\\DD"
     elseif Texture == "LEFT" then
         return "|A:NPE_LeftClick:0:0|a"
     elseif Texture == "RIGHT" then
@@ -560,7 +560,7 @@ function TJ.SkinDropDown(dropDown)
     local tex = dropDown:CreateTexture("OVERLAY")
     tex:SetPoint("TOPLEFT", bt, "TOPLEFT", 2, -2)
     tex:SetPoint("BOTTOMRIGHT", bt, "BOTTOMRIGHT", -2, 2)
-    tex:SetTexture("Interface/AddOns/TuanJian/Media/textures/arrow.tga")
+    tex:SetTexture("Interface/AddOns/TuanJianPlus/Media/textures/arrow.tga")
     tex:SetRotation(math.pi)
     dropDown:HookScript("OnEnter", function(self)
         if dropDown.isDisabled then return end

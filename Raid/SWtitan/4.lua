@@ -41,9 +41,9 @@ TJ.Load[FB .. bossIndex] = function()
 
     -- 技能提醒
     local msg1 = L["你被点名燃烧，马上远离人群。"]
+    local burnWarningFrame
     if TJ.canUseTips then
         local name = "tips1" .. FB .. bossIndex
-
         TJ.options[name .. "reset"] = 1
         TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
         local ontext = {
@@ -59,6 +59,31 @@ TJ.Load[FB .. bossIndex] = function()
         f:ClearAllPoints()
         f:SetPoint("BOTTOMLEFT", TJ.spChild.title, "TOPRIGHT", 0, 15)
         f:SetHitRectInsets(0, 0, 0, 0)
+
+        local name = "tips2" .. FB .. bossIndex
+        TJ.options[name .. "reset"] = 1
+        TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
+        local ontext = {
+            L["燃烧滚出人群"],
+            L["当燃烧点名是你时，全屏提醒你出人群。"],
+        }
+        local f = ns.O.CreateCheckButton(name, AddTexture(135818) .. L["燃烧滚出人群"],
+            mainFrame, 40, -150, ontext)
+        f:ClearAllPoints()
+        f:SetPoint("BOTTOMLEFT", TJ.spChild.title, "TOPRIGHT", 0, 45)
+        f:SetHitRectInsets(0, 0, 0, 0)
+
+        burnWarningFrame = CreateFrame("Frame", nil, UIParent)
+        burnWarningFrame:SetAllPoints(UIParent)
+        burnWarningFrame:SetFrameStrata("HIGH")
+        burnWarningFrame:Hide()
+
+        local text = burnWarningFrame:CreateFontString(nil, "OVERLAY")
+        text:SetPoint("CENTER", UIParent, "CENTER", 0, 150)
+        text:SetFont(STANDARD_TEXT_FONT, 150, "THICKOUTLINE")
+        text:SetTextColor(1, 0.1, 0.1)
+        text:SetText(L["燃烧！快出人群！"])
+        burnWarningFrame.text = text
     end
 
     -- 坦克
@@ -265,6 +290,7 @@ TJ.Load[FB .. bossIndex] = function()
     TJ.AddDispelInfo(45230, 1, FB, bossIndex) -- 高热
 
     local tipName = "tips1" .. FB .. bossIndex
+    local tipName2 = "tips2" .. FB .. bossIndex
     mainFrame.BOSS_SAY = function(msg)
         local player = msg:match("奥蕾塞丝向(.+)施放燃烧")
         if player and not TJ.SetCD(mainFrame, 2, 45342) then
@@ -295,6 +321,13 @@ TJ.Load[FB .. bossIndex] = function()
                 for i = 1, 3 do
                     SendChatMessage(msg1, "WHISPER", nil, player)
                 end
+            end
+            if player == TJ.playerName and TuanJian.options[tipName2] == 1 and burnWarningFrame then
+                burnWarningFrame:Show()
+                After(2, function()
+                    burnWarningFrame:Hide()
+                end)
+                PlaySoundFile("Interface\\AddOns\\TuanJianPlus\\Media\\sound\\other\\BoxingArenaSound.ogg", "Master")
             end
             return
         end
@@ -327,3 +360,4 @@ TJ.Load[FB .. bossIndex] = function()
         end
     end
 end
+-- /run TJ.frame["SWtitan"][4].BOSS_SAY("奥蕾塞丝向"..UnitName("player").."施放燃烧")

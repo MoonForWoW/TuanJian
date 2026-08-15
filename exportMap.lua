@@ -99,13 +99,13 @@ function TJ.ExportMapUI()
         end
     end
 
-    local bt = CreateFrame("Button", nil, optionFrame)
-    bt:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -10, 0)
+    local bt = CreateFrame("Button", nil, TJ.optionMainFrame)
+    bt:SetPoint("TOPRIGHT", TJ.MainFrame, "TOPRIGHT", -30, -1)
     bt:SetNormalFontObject(TJ.FontGreen15)
     bt:SetDisabledFontObject(TJ.FontDis15)
     bt:SetHighlightFontObject(TJ.FontWhite15)
     bt:SetText(L["导入站位"])
-    bt:SetSize(bt:GetFontString():GetWidth(), 30)
+    bt:SetSize(bt:GetFontString():GetWidth(), 20)
     TJ.SetTextHighlightTexture(bt)
     TJ.optionMainFrame.importButton = bt
     CreateScroll(bt)
@@ -177,13 +177,13 @@ function TJ.ExportMapUI()
         TJ.PlaySound(2)
     end)
 
-    local bt = CreateFrame("Button", nil, optionFrame)
-    bt:SetPoint("RIGHT", TJ.optionMainFrame.importButton, "LEFT", -7, 0)
+    local bt = CreateFrame("Button", nil, TJ.optionMainFrame.importButton)
+    bt:SetPoint("RIGHT", TJ.optionMainFrame.importButton, "LEFT", -5, 0)
     bt:SetNormalFontObject(TJ.FontGreen15)
     bt:SetDisabledFontObject(TJ.FontDis15)
     bt:SetHighlightFontObject(TJ.FontWhite15)
     bt:SetText(L["导出站位"])
-    bt:SetSize(bt:GetFontString():GetWidth(), 30)
+    bt:SetSize(bt:GetFontString():GetWidth(), 20)
     TJ.SetTextHighlightTexture(bt)
     TJ.optionMainFrame.exportButton = bt
     CreateScroll(bt)

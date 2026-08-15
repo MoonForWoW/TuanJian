@@ -22,7 +22,7 @@ TJ.Init(function()
     do
         local f = TJ.CreateMainFrame("TJ.MainFrame", "<" .. AddonName .. "> " .. L["团减助手"])
         f.titleText:ClearAllPoints()
-        f.titleText:SetPoint("TOP", -0, -4)
+        f.titleText:SetPoint("TOP", -20, -4)
         f:SetSize(500, 500)
         f.IsForbidden = nil
         TJ.MainFrame = f
@@ -189,7 +189,7 @@ TJ.Init(function()
             TuanJian.options.lastVer = TJ.ver
         end)
     end
-    tinsert(UISpecialFrames, "TJ.MainFrame")
+    -- tinsert(UISpecialFrames, "TJ.MainFrame")
 
     -- 版本号显示
     TJ.Init3(function()
@@ -240,6 +240,56 @@ TJ.Init(function()
                 end)
             end
         end)
+
+        if _G.BG then
+            _G.BG.ButtonRaidVer:HookScript("OnEnter", function(self)
+                local parent = GameTooltip
+                TuanJianTooltip2:SetOwner(parent, "ANCHOR_NONE", 0, 0)
+                TuanJianTooltip2:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", 0, 0)
+                TuanJianTooltip2:ClearLines()
+                TuanJianTooltip2:AddLine(L["TuanJian版本(团队)"], 0, 1, 0)
+                TuanJianTooltip2:AddLine(" ")
+                local line = 2
+                for i, v in ipairs(TJ.SortRaidRosterInfo()) do
+                    local Ver
+                    if v.online then
+                        Ver = L["无"]
+                    else
+                        Ver = L["未知"]
+                    end
+
+                    if TJ.raidVersion[v.name] then
+                        Ver = TJ.raidVersion[v.name]
+                    end
+
+                    local role = ""
+                    local y
+                    if v.rank == 2 then
+                        role = role .. AddTexture("interface/groupframe/ui-group-leadericon", y)
+                    elseif v.rank == 1 then
+                        role = role .. AddTexture("interface/groupframe/ui-group-assistanticon", y)
+                    end
+                    if v.isML then
+                        role = role .. AddTexture("interface/groupframe/ui-group-masterlooter", y)
+                    end
+                    local c1, c2, c3 = GetClassRGB(v.name)
+                    TuanJianTooltip2:AddDoubleLine(v.name .. role, Ver , c1, c2, c3, 1, 1, 1)
+                    if Ver == L["无"] or Ver == L["未知"] then
+                        local alpha = 0.4
+                        if _G["TuanJianTooltip2TextLeft" .. (i + line)] then
+                            _G["TuanJianTooltip2TextLeft" .. (i + line)]:SetAlpha(alpha)
+                        end
+                        if _G["TuanJianTooltip2TextRight" .. (i + line)] then
+                            _G["TuanJianTooltip2TextRight" .. (i + line)]:SetAlpha(alpha)
+                        end
+                    end
+                end
+                TuanJianTooltip2:Show()
+            end)
+            _G.BG.ButtonRaidVer:HookScript("OnLeave", function(self)
+                TuanJianTooltip2:Hide()
+            end)
+        end
     end)
 
     -- 模块切换
@@ -1734,7 +1784,7 @@ TJ.Init(function()
         local icon = f:CreateTexture()
         icon:SetSize(20, 20)
         icon:SetPoint("LEFT")
-        icon:SetTexture([[Interface\AddOns\TuanJian\Media\icon\icon.tga]])
+        icon:SetTexture([[Interface\AddOns\TuanJianPlus\Media\icon\icon.tga]])
 
         local t = f:CreateFontString()
         t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")

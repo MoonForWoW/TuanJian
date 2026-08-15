@@ -1,5 +1,7 @@
 local AddonName, ns = ...
 
+if not (TJ.IsWLK or TJ.IsMOP) then return end
+
 local LibBG = ns.LibBG
 local L = ns.L
 
@@ -18,15 +20,10 @@ local GetAddOnMetadata = GetAddOnMetadata or C_AddOns.GetAddOnMetadata
 local IsAddOnLoaded = IsAddOnLoaded or C_AddOns.IsAddOnLoaded
 
 local logo = "TuanJian: "
+local buffTbl
+local EXPIRE_TIME = 60 * 3
 
-TJ.Init(function()
-    if not TJ.IsWLK then return end
-    C_ChatInfo.RegisterAddonMessagePrefix("PLPWR")
-
-    local EXPIRE_TIME = 60 * 3
-
-    -- 团队BUFF
-    local buffTbl
+if TJ.IsWLK then
     buffTbl = {
         { id = { [25899] = true, [20911] = true }, displayID = 25899, class = { "PALADIN" }, Pally = "4444444444", tipKey = L["庇护"], monitor = true, }, -- 庇护
         { id = { [48934] = true, [48932] = true }, displayID = 48934, class = { "PALADIN" }, Pally = "22n222n222", tipKey = L["力量"], monitor = true, monitorFilter = "physical", monitorPet = true, }, -- 力量
@@ -40,6 +37,58 @@ TJ.Init(function()
         { id = { [58659] = true }, displayID = 58659, class = { "MAGE" }, tipKey = L["大餐 桌子 吃喝"], }, -- 桌子
         { id = { [43015] = true }, displayID = 43015, auraID = { [57399] = true }, monitorDisplayID = 57399, auraName = L["进食充分"], class = nil, isItem = true, tipKey = L["鱼"], shortName = L["食物"], monitor = true, noBroadcast = true, noWhisper = true, whisperMissing = true, }, -- 放鱼
     }
+elseif TJ.IsMOP then
+    buffTbl = {
+        { key = "stats", id = { [1126] = true, [115921] = true, [90363] = true, [20217] = true, [117666] = true, [117667] = true }, displayID = 1126, class = { "DRUID", "PALADIN", "MONK", "HUNTER" }, tipKey = L["全属性"], monitor = true, monitorPet = true, providers = { { class = "DRUID" }, { class = "PALADIN" }, { class = "MONK" }, { class = "HUNTER", talents = { 1 } } }, },
+        { key = "spell_power", id = { [1459] = true, [126309] = true, [77747] = true, [109773] = true, [61316] = true }, displayID = 1459, class = { "MAGE", "WARLOCK", "SHAMAN", "HUNTER" }, tipKey = L["法术强度"], shortName = L["法强"], monitor = true, monitorPet = true, providers = { { class = "MAGE" }, { class = "WARLOCK" }, { class = "SHAMAN" }, { class = "HUNTER", talents = { 1 } } }, },
+        { key = "attack_power", id = { [57330] = true, [19506] = true, [6673] = true }, displayID = 57330, class = { "DEATHKNIGHT", "HUNTER", "WARRIOR" }, tipKey = L["攻击强度"], shortName = L["攻强"], monitor = true, monitorPet = true, providers = { { class = "DEATHKNIGHT" }, { class = "HUNTER" }, { class = "WARRIOR" } }, },
+        { key = "critical_strike", id = { [17007] = true, [90309] = true, [126309] = true, [24604] = true, [1459] = true, [116781] = true, [24932] = true, [61316] = true, [24597] = true }, displayID = 116781, class = { "DRUID", "HUNTER", "MAGE", "MONK" }, tipKey = L["暴击"], monitor = true, monitorPet = true, providers = { { class = "DRUID", talents = { 2, 3 } }, { class = "HUNTER" }, { class = "MAGE" }, { class = "MONK", talents = { 3 } } }, },
+        { key = "mastery", id = { [93435] = true, [128997] = true, [19740] = true, [116956] = true, [127830] = true }, displayID = 19740, class = { "PALADIN", "SHAMAN", "HUNTER" }, tipKey = L["精通"], monitor = true, monitorPet = true, providers = { { class = "PALADIN" }, { class = "SHAMAN" }, { class = "HUNTER" } }, },
+        { key = "stamina", id = { [90364] = true, [21562] = true, [109773] = true, [469] = true }, displayID = 21562, class = { "PRIEST", "WARRIOR", "WARLOCK", "HUNTER" }, tipKey = L["耐力"], monitor = true, monitorPet = true, providers = { { class = "PRIEST" }, { class = "WARRIOR" }, { class = "WARLOCK" }, { class = "HUNTER", talents = { 1 } } }, },
+        { key = "food", id = { [87226] = true }, displayID = 87226, auraName = L["进食充分"], class = nil, isItem = true, tipKey = L["大餐"], shortName = L["食物"], monitor = true, noBroadcast = true, noWhisper = true, whisperMissing = true, },
+    }
+end
+
+function TJ.CreateBuffMonitorToggleButton()
+    local monitorToggle
+    if TJ.IsWLK then
+        monitorToggle = TJ.CreateButton(TJ.buffMainFrame)
+        monitorToggle:SetPoint("TOPRIGHT", TJ.MainFrame, "TOPRIGHT", -20, -35)
+        monitorToggle:SetSize(110, 25)
+    else
+        monitorToggle = TJ.CreateButton(TJ.optionMainFrame)
+        monitorToggle:SetPoint("TOPRIGHT", TJ.optionMainFrame.optionFrame, "TOPRIGHT", -0, -10)
+        monitorToggle:SetFrameLevel(8)
+        monitorToggle:SetSize(120, 25)
+    end
+    monitorToggle:SetScript("OnClick", function(self)
+        TJ.PlaySound(1)
+        if TJ.SetBuffMonitorShown then
+            TJ.SetBuffMonitorShown(TuanJian.Buff.monitor.show ~= 1)
+        end
+    end)
+    monitorToggle:SetScript("OnEnter", function(self)
+        if IsInRaid(1) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM", 0, 0)
+        GameTooltip:ClearLines()
+        GameTooltip:AddLine(self:GetText(), 1, 1, 1, true)
+        GameTooltip:AddLine(L["你当前不在团队中，监控界面不会显示。"], 1, .2, .2, true)
+        GameTooltip:Show()
+    end)
+    monitorToggle:SetScript("OnLeave", GameTooltip_Hide)
+    function monitorToggle:Update()
+        if TuanJian.Buff.monitor.show == 1 then
+            self:SetText(L["关闭%s"]:format(TJ.IsWLK and L['监控界面'] or L['BUFF监控']))
+        else
+            self:SetText(L["打开%s"]:format(TJ.IsWLK and L['监控界面'] or L['BUFF监控']))
+        end
+    end
+
+    monitorToggle:Update()
+    TJ.BuffMonitorToggleButton = monitorToggle
+end
+
+TJ.Init(function()
     TuanJian.Buff = TuanJian.Buff or {}
     TuanJian.Buff.edit = TuanJian.Buff.edit or {}
     TuanJian.Buff.monitor = TuanJian.Buff.monitor or {}
@@ -47,6 +96,10 @@ TJ.Init(function()
         TuanJian.Buff.edit[i] = TuanJian.Buff.edit[i] or {}
     end
     TJ.Buff = {}
+
+    C_ChatInfo.RegisterAddonMessagePrefix("PLPWR")
+
+    TJ.CreateBuffMonitorToggleButton()
 
     do
         local t = TJ.buffMainFrame:CreateFontString()
@@ -82,35 +135,6 @@ TJ.Init(function()
             GameTooltip:Show()
         end)
         bt:SetScript("OnLeave", GameTooltip_Hide)
-
-        local monitorToggle = TJ.CreateButton(TJ.buffMainFrame)
-        monitorToggle:SetSize(120, 25)
-        monitorToggle:SetPoint("TOPRIGHT", TJ.MainFrame, "TOPRIGHT", -20, -35)
-        monitorToggle:SetScript("OnClick", function(self)
-            TJ.PlaySound(1)
-            if TJ.SetBuffMonitorShown then
-                TJ.SetBuffMonitorShown(TuanJian.Buff.monitor.show ~= 1)
-            end
-        end)
-        monitorToggle:SetScript("OnEnter", function(self)
-            if IsInRaid(1) then return end
-            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM", 0, 0)
-            GameTooltip:ClearLines()
-            GameTooltip:AddLine(self:GetText(), 1, 1, 1, true)
-            GameTooltip:AddLine(L["你当前不在团队中，监控界面不会显示。"], 1, .2, .2, true)
-            GameTooltip:Show()
-        end)
-        monitorToggle:SetScript("OnLeave", GameTooltip_Hide)
-        function monitorToggle:Update()
-            if TuanJian.Buff.monitor.show == 1 then
-                self:SetText(AddTexture('QUEST') .. L["关闭监控界面"])
-            else
-                self:SetText(AddTexture('QUEST') .. L["打开监控界面"])
-            end
-        end
-
-        monitorToggle:Update()
-        TJ.BuffMonitorToggleButton = monitorToggle
     end
 
     local function CreateSpellFrame(ID, isItem)
@@ -554,11 +578,11 @@ TJ.Init(function()
             local name = TJ.GSN(sourceName)
             if not UnitInRaid(name) then return end
             if link then
-                SendChatMessage(format(L["%s放鱼了%s，大家快吃！"], name, link), "RAID_WARNING")
+                SendChatMessage(format(logo .. L["%s放鱼了%s，大家快吃！"], name, link), "RAID_WARNING")
             else
                 Item:CreateFromItemID(43015):ContinueOnItemLoad(function()
                     link = select(2, GetItemInfo(43015))
-                    SendChatMessage(format(L["%s放鱼了%s，大家快吃！"], name, link), "RAID_WARNING")
+                    SendChatMessage(format(logo .. L["%s放鱼了%s，大家快吃！"], name, link), "RAID_WARNING")
                 end)
             end
         end)
@@ -622,876 +646,895 @@ TJ.Init(function()
             end
         end)
     end
+end)
 
-    -- 团队BUFF常驻监控
-    do
-        local CLICK_ALL_CD = 12
-        local CLICK_CD = 8
-        local BURST_POTION_RESET_DELAY = 60 * 2 -- 战斗后爆发药水重置时间 
-        local monitorSaved = TuanJian.Buff.monitor or {}
-        if monitorSaved.layout ~= 2 and monitorSaved.layout ~= 3 then
-            monitorSaved.layout = 1
-        end
-        local frameStrataOptions = {
-            { value = "BACKGROUND", text = L["BACKGROUND"] },
-            { value = "LOW", text = L["LOW"] },
-            { value = "MEDIUM", text = L["MEDIUM"] },
-            { value = "HIGH", text = L["HIGH"] },
-            { value = "DIALOG", text = L["DIALOG"] },
-            { value = "FULLSCREEN", text = L["FULLSCREEN"] },
-            { value = "FULLSCREEN_DIALOG", text = L["FULLSCREEN_DIALOG"] },
-            { value = "TOOLTIP", text = L["TOOLTIP"] },
-        }
-        local validFrameStrata = {}
-        for _, option in ipairs(frameStrataOptions) do
-            validFrameStrata[option.value] = true
-        end
-        if not validFrameStrata[monitorSaved.frameStrata] then
-            monitorSaved.frameStrata = "MEDIUM"
-        end
-        local frameScaleOptions = { 80, 85, 90, 95, 100, 105, 110, 115, 120 }
-        local validFrameScale = {}
-        for _, percent in ipairs(frameScaleOptions) do
-            validFrameScale[percent / 100] = true
-        end
-        if not validFrameScale[monitorSaved.scale] then
-            monitorSaved.scale = 1
-        end
-        if monitorSaved.monitorPet == nil then
-            monitorSaved.monitorPet = 1
-        end
-        monitorSaved.filters = monitorSaved.filters or {}
-        local rows = {}
-        local clickCD = {}
-        local broadcastCD
-        local missingWhisperCD = {}
-        local burstPotionUsed = {}
-        local burstPotionActive
-        local burstPotionResetPending
-        local burstPotionResetGeneration = 0
-        local SendMissingWhisper, OpenMonitorMenu, GetResponsibilityUnit, UpdateMonitorLayout, UpdateMonitor
-        local IsMonitorRowEnabled
-        local StartMonitorMoving, StopMonitorMoving
-        local title, broadcastButton, monitorFrame
-        local flaskInfo = {
-            auraID = {
-                [53755] = true, -- 冰霜巨龙合剂
-                [53758] = true, -- 石血合剂
-                [53760] = true, -- 无尽怒气合剂
-                [54212] = true, -- 纯净魔精合剂
-                [53752] = true, -- 次级坚韧合剂
-                [62380] = true, -- 次级抗性合剂
-                [60347] = true, -- 强效思维 45智力
-                [17627] = true, -- 精炼智慧合剂
-            },
-            monitorDisplayID = 53755,
-            monitorKey = "flask",
-            shortName = L["合剂"],
-            monitor = true,
-            noBroadcast = true,
-            noWhisper = true,
-            whisperMissing = true,
-        }
-        local burstPotionInfo = {
-            auraID = {
-                [28714] = true,   -- 烈焰菇
-                [53908] = true,   -- 速度药水
-                [53909] = true,   -- 狂野魔法药水
-                [53762] = true,   -- 不灭药水
-                [1282971] = true, -- 狂野魔精
-                -- [20217] = true,   -- test
-            },
-            monitorDisplayID = 53908,
-            monitorKey = "burst_potion",
-            shortName = L["吃药"],
-            monitor = true,
-            noBroadcast = true,
-            noWhisper = true,
-            countMode = "burstPotion",
-            missingTitle = L["未使用："],
-            inactiveText = L["等待下一轮首领战"],
-        }
-        local focusMagicInfo = {
-            auraID = { [54646] = true },
-            monitorDisplayID = 54646,
-            monitorKey = "focus_magic",
-            shortName = L["专注"],
-            monitor = true,
-            noBroadcast = true,
-            noWhisper = true,
-            countMode = "casterClass",
-            casterClass = "MAGE",
-            missingTitle = L["未使用："],
-        }
-        local personalBuffInfo = {
-            monitorDisplayID = 25780,
-            monitorKey = "personal_buff",
-            shortName = L["常驻"],
-            monitor = true,
-            noBroadcast = true,
-            noWhisper = true,
-            whisperMissing = true,
-            countMode = "personalBuff",
+-- 团队BUFF常驻监控
+TJ.Init(function()
+    local CLICK_ALL_CD = 12
+    local CLICK_CD = 8
+    local BURST_POTION_RESET_DELAY = 60 * 2 -- 战斗后爆发药水重置时间
+    local monitorSaved = TuanJian.Buff.monitor or {}
+    if monitorSaved.layout ~= 2 and monitorSaved.layout ~= 3 then
+        monitorSaved.layout = 1
+    end
+    local frameStrataOptions = {
+        { value = "BACKGROUND", text = L["BACKGROUND"] },
+        { value = "LOW", text = L["LOW"] },
+        { value = "MEDIUM", text = L["MEDIUM"] },
+        { value = "HIGH", text = L["HIGH"] },
+        { value = "DIALOG", text = L["DIALOG"] },
+        { value = "FULLSCREEN", text = L["FULLSCREEN"] },
+        { value = "FULLSCREEN_DIALOG", text = L["FULLSCREEN_DIALOG"] },
+        { value = "TOOLTIP", text = L["TOOLTIP"] },
+    }
+    local validFrameStrata = {}
+    for _, option in ipairs(frameStrataOptions) do
+        validFrameStrata[option.value] = true
+    end
+    if not validFrameStrata[monitorSaved.frameStrata] then
+        monitorSaved.frameStrata = "MEDIUM"
+    end
+    local frameScaleOptions = { 80, 85, 90, 95, 100, 105, 110, 115, 120 }
+    local validFrameScale = {}
+    for _, percent in ipairs(frameScaleOptions) do
+        validFrameScale[percent / 100] = true
+    end
+    if not validFrameScale[monitorSaved.scale] then
+        monitorSaved.scale = 1
+    end
+    if monitorSaved.monitorPet == nil then
+        monitorSaved.monitorPet = 1
+    end
+    monitorSaved.filters = monitorSaved.filters or {}
+    local rows = {}
+    local clickCD = {}
+    local broadcastCD
+    local missingWhisperCD = {}
+    local burstPotionUsed = {}
+    local burstPotionActive
+    local burstPotionResetPending
+    local burstPotionResetGeneration = 0
+    local SendMissingWhisper, OpenMonitorMenu, GetResponsibilityUnit, UpdateMonitorLayout, UpdateMonitor
+    local IsMonitorRowEnabled
+    local StartMonitorMoving, StopMonitorMoving
+    local title, broadcastButton, monitorFrame
+    local flaskInfo = {
+        auraID = {
+            [53755] = true, -- 冰霜巨龙合剂
+            [53758] = true, -- 石血合剂
+            [53760] = true, -- 无尽怒气合剂
+            [54212] = true, -- 纯净魔精合剂
+            [53752] = true, -- 次级坚韧合剂
+            [62380] = true, -- 次级抗性合剂
+            [60347] = true, -- 强效思维 45智力
+            [17627] = true, -- 精炼智慧合剂
+        },
+        monitorDisplayID = 53755,
+        monitorKey = "flask",
+        shortName = L["合剂"],
+        monitor = true,
+        noBroadcast = true,
+        noWhisper = true,
+        whisperMissing = true,
+    }
+    local burstPotionInfo = {
+        auraID = {
+            [28714] = true,   -- 烈焰菇
+            [53908] = true,   -- 速度药水
+            [53909] = true,   -- 狂野魔法药水
+            [53762] = true,   -- 不灭药水
+            [1282971] = true, -- 狂野魔精
+            -- [20217] = true,   -- test
+        },
+        monitorDisplayID = 53908,
+        monitorKey = "burst_potion",
+        shortName = L["吃药"],
+        monitor = true,
+        noBroadcast = true,
+        noWhisper = true,
+        countMode = "burstPotion",
+        missingTitle = L["未使用："],
+        inactiveText = L["等待下一轮首领战"],
+    }
+    local focusMagicInfo = {
+        auraID = { [54646] = true },
+        monitorDisplayID = 54646,
+        monitorKey = "focus_magic",
+        shortName = L["专注"],
+        monitor = true,
+        noBroadcast = true,
+        noWhisper = true,
+        countMode = "casterClass",
+        casterClass = "MAGE",
+        missingTitle = L["未使用："],
+    }
+    local personalBuffInfo = {
+        monitorDisplayID = 25780,
+        monitorKey = "personal_buff",
+        shortName = L["常驻"],
+        monitor = true,
+        noBroadcast = true,
+        noWhisper = true,
+        whisperMissing = true,
+        countMode = "personalBuff",
+        ignoreExpiration = true,
+    }
+    local personalBuffRules = {
+        MAGE = {
+            id = { [43046] = true, [43045] = true, [30482] = true },
+            displayID = 43046, -- 熔岩护甲
             ignoreExpiration = true,
-        }
-        local personalBuffRules = {
-            MAGE = {
-                id = { [43046] = true, [43045] = true, [30482] = true },
-                displayID = 43046, -- 熔岩护甲
-                ignoreExpiration = true,
-            },
-            WARLOCK = {
-                id = { [47893] = true },
-                displayID = 47893, -- 邪甲术
-                ignoreExpiration = true,
-            },
-            HUNTER = {
-                id = { [61847] = true, [34074] = true, [5118] = true }, -- 龙鹰、蝰蛇、猎豹守护
-                displayID = 61847,                                      -- 龙鹰守护
-                ignoreExpiration = true,
-            },
-            PRIEST = {
-                id = { [48168] = true },
-                displayID = 48168, -- 心灵之火
-                ignoreExpiration = true,
-            },
-        }
-        local paladinPersonalBuffRule = {
-            id = { [25780] = true },
-            displayID = 25780, -- 正义之怒
+        },
+        WARLOCK = {
+            id = { [47893] = true },
+            displayID = 47893, -- 邪甲术
             ignoreExpiration = true,
-        }
-        local deathKnightPersonalBuffRule = {
-            id = { [48263] = true },
-            displayID = 48263, -- 冰霜灵气
+        },
+        HUNTER = {
+            id = { [61847] = true, [34074] = true, [5118] = true }, -- 龙鹰、蝰蛇、猎豹守护
+            displayID = 61847,                                      -- 龙鹰守护
             ignoreExpiration = true,
-        }
-        OpenMonitorMenu = function(anchor)
-            local filterMenu = {}
-            for _, row in ipairs(rows) do
-                local filterRow = row
-                tinsert(filterMenu, {
-                    text = AddTexture(filterRow.icon:GetTexture()) .. filterRow.name,
-                    checked = function()
-                        return IsMonitorRowEnabled(filterRow)
-                    end,
-                    isNotRadio = true,
-                    keepShownOnClick = true,
-                    func = function(button, _, _, checked)
-                        if not checked then
-                            local enabledCount = 0
-                            for _, otherRow in ipairs(rows) do
-                                if IsMonitorRowEnabled(otherRow) then
-                                    enabledCount = enabledCount + 1
-                                end
+        },
+        PRIEST = {
+            id = { [48168] = true },
+            displayID = 48168, -- 心灵之火
+            ignoreExpiration = true,
+        },
+    }
+    local paladinPersonalBuffRule = {
+        id = { [25780] = true },
+        displayID = 25780, -- 正义之怒
+        ignoreExpiration = true,
+    }
+    local deathKnightPersonalBuffRule = {
+        id = { [48263] = true },
+        displayID = 48263, -- 冰霜灵气
+        ignoreExpiration = true,
+    }
+    OpenMonitorMenu = function(anchor)
+        local filterMenu = {}
+        for _, row in ipairs(rows) do
+            local filterRow = row
+            tinsert(filterMenu, {
+                text = AddTexture(filterRow.icon:GetTexture()) .. filterRow.name,
+                checked = function()
+                    return IsMonitorRowEnabled(filterRow)
+                end,
+                isNotRadio = true,
+                keepShownOnClick = true,
+                func = function(button, _, _, checked)
+                    if not checked then
+                        local enabledCount = 0
+                        for _, otherRow in ipairs(rows) do
+                            if IsMonitorRowEnabled(otherRow) then
+                                enabledCount = enabledCount + 1
                             end
-                            if enabledCount <= 5 then
-                                UIErrorsFrame:AddMessage(L["至少需要保留5种BUFF监控"], 1, 0, 0)
-                                button.checked = true
-                                _G[button:GetName() .. "Check"]:Show()
-                                _G[button:GetName() .. "UnCheck"]:Hide()
-                                return
-                            end
-                            monitorSaved.filters[filterRow.monitorKey] = 0
-                        else
-                            monitorSaved.filters[filterRow.monitorKey] = nil
                         end
-                        UpdateMonitorLayout()
-                        UpdateMonitor()
-                    end,
-                })
-            end
-            local frameStrataMenu = {}
-            for _, option in ipairs(frameStrataOptions) do
-                local strata = option.value
-                tinsert(frameStrataMenu, {
-                    text = option.text,
-                    checked = function()
-                        return monitorSaved.frameStrata == strata
-                    end,
-                    func = function()
-                        monitorSaved.frameStrata = strata
-                        monitorFrame:SetFrameStrata(strata)
-                        LibBG:CloseDropDownMenus()
-                    end,
-                })
-            end
-            local frameScaleMenu = {}
-            for _, percent in ipairs(frameScaleOptions) do
-                local scale = percent / 100
-                tinsert(frameScaleMenu, {
-                    text = format(L["%s%%"], percent),
-                    checked = function()
-                        return monitorSaved.scale == scale
-                    end,
-                    func = function()
-                        monitorSaved.scale = scale
-                        monitorFrame:SetScale(scale)
-                        LibBG:CloseDropDownMenus()
-                    end,
-                })
-            end
-            local menu = {
-                {
-                    text = L["团队BUFF常驻监控"],
-                    isTitle = true,
-                    notCheckable = true,
-                },
-                {
-                    text = monitorSaved.lock == 1 and L["解锁界面"] or L["锁定界面"],
-                    notCheckable = true,
-                    func = function()
-                        monitorSaved.lock = monitorSaved.lock == 1 and 0 or 1
-                        LibBG:CloseDropDownMenus()
-                    end,
-                },
-                {
-                    text = L["隐藏界面"],
-                    notCheckable = true,
-                    func = function()
-                        TJ.SetBuffMonitorShown(false)
-                        LibBG:CloseDropDownMenus()
-                    end,
-                },
-                TJ.CreateDropDownSeparator(),
-                {
-                    text = L["重置爆发药水记录"],
-                    notCheckable = true,
-                    func = function()
-                        if TJ.ResetBurstPotionMonitor then
-                            TJ.ResetBurstPotionMonitor()
+                        if enabledCount <= 5 then
+                            UIErrorsFrame:AddMessage(L["至少需要保留5种BUFF监控"], 1, 0, 0)
+                            button.checked = true
+                            _G[button:GetName() .. "Check"]:Show()
+                            _G[button:GetName() .. "UnCheck"]:Hide()
+                            return
                         end
-                        LibBG:CloseDropDownMenus()
-                    end,
-                },
-                {
-                    text = L["BUFF过滤"],
-                    hasArrow = true,
-                    notCheckable = true,
-                    menuList = filterMenu,
-                },
-                {
-                    text = L["框架层级"],
-                    hasArrow = true,
-                    notCheckable = true,
-                    menuList = frameStrataMenu,
-                },
-                {
-                    text = L["界面缩放"],
-                    hasArrow = true,
-                    notCheckable = true,
-                    menuList = frameScaleMenu,
-                },
-                {
-                    text = L["监控宠物"],
-                    checked = function()
-                        return monitorSaved.monitorPet == 1
-                    end,
-                    isNotRadio = true,
-                    func = function()
-                        monitorSaved.monitorPet = monitorSaved.monitorPet == 1 and 0 or 1
-                        UpdateMonitor()
-                    end,
-                },
-
-                TJ.CreateDropDownSeparator(),
-                {
-                    text = L["布局"],
-                    isTitle = true,
-                    notCheckable = true,
-                },
-                {
-                    text = L["单列布局"],
-                    checked = monitorSaved.layout == 1,
-                    func = function()
-                        monitorSaved.layout = 1
-                        UpdateMonitorLayout()
-                        LibBG:CloseDropDownMenus()
-                    end,
-                },
-                {
-                    text = L["双列布局"],
-                    checked = monitorSaved.layout == 2,
-                    func = function()
-                        monitorSaved.layout = 2
-                        UpdateMonitorLayout()
-                        LibBG:CloseDropDownMenus()
-                    end,
-                },
-                {
-                    text = L["单行布局"],
-                    checked = monitorSaved.layout == 3,
-                    func = function()
-                        monitorSaved.layout = 3
-                        UpdateMonitorLayout()
-                        LibBG:CloseDropDownMenus()
-                    end,
-                },
-
-                TJ.CreateDropDownSeparator(),
-                {
-                    text = CANCEL,
-                    notCheckable = true,
-                    func = function()
-                        LibBG:CloseDropDownMenus()
-                    end,
-                }
-            }
-            LibBG:EasyMenu(menu, TJ.dropDown, "cursor", 0, 0, "MENU", 2)
-        end
-
-        -- 主界面
-        monitorFrame = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-        do
-            monitorFrame:SetSize(150, 28)
-            monitorFrame:SetScale(monitorSaved.scale)
-            monitorFrame:SetFrameStrata(monitorSaved.frameStrata)
-            monitorFrame:SetClampedToScreen(true)
-            monitorFrame:SetMovable(true)
-            monitorFrame:EnableMouse(true)
-            monitorFrame:SetBackdrop({
-                bgFile = "Interface\\Buttons\\WHITE8x8",
-                edgeFile = "Interface\\Buttons\\WHITE8x8",
-                edgeSize = 1,
-            })
-            monitorFrame:SetFrameLevel(20)
-            monitorFrame:SetToplevel(true)
-            monitorFrame:SetBackdropColor(.02, .02, .02, .85)
-            local r, g, b = ns.GetClassRGB(nil, "player")
-            monitorFrame:SetBackdropBorderColor(r, g, b, TJ.borderAlpha)
-            TJ.BuffMonitorFrame = monitorFrame
-
-            local savedPoint = monitorSaved.point
-            if savedPoint then
-                monitorFrame:SetPoint(savedPoint.point or "CENTER", UIParent,
-                    savedPoint.relativePoint or savedPoint.point or "CENTER", savedPoint.x or 0, savedPoint.y or 0)
-            else
-                monitorFrame:SetPoint("LEFT", UIParent, "LEFT", 0, 0)
-            end
-
-            StartMonitorMoving = function()
-                LibBG.CloseDropDownMenus()
-                monitorFrame.isMoving = true
-                monitorFrame:StartMoving()
-            end
-            StopMonitorMoving = function()
-                if not monitorFrame.isMoving then return end
-                monitorFrame.isMoving = nil
-                monitorFrame:StopMovingOrSizing()
-                local point, _, relativePoint, x, y = monitorFrame:GetPoint(1)
-                monitorSaved.point = { point = point, relativePoint = relativePoint, x = x, y = y }
-            end
-
-            monitorFrame:SetScript("OnMouseDown", function(self, button)
-                if button == "LeftButton" and (monitorSaved.lock ~= 1 or IsShiftKeyDown()) then
-                    StartMonitorMoving()
-                end
-            end)
-            monitorFrame:SetScript("OnMouseUp", function(self, button)
-                if button == "LeftButton" and self.isMoving then
-                    StopMonitorMoving()
-                elseif button == "RightButton" then
-                    OpenMonitorMenu(self)
-                end
-            end)
-            monitorFrame:SetScript("OnLeave", GameTooltip_Hide)
-
-            title = monitorFrame:CreateFontString(nil, "OVERLAY")
-            title:SetPoint("TOPLEFT", 7, -5)
-            title:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
-            title:SetText(L["团队BUFF"])
-            title:SetTextColor(1, .82, 0)
-            title:SetWidth(title:GetStringWidth() + 10)
-            title:SetWordWrap(false)
-            title:SetJustifyH("LEFT")
-
-            -- 批量密语
-            broadcastButton = CreateFrame("Button", nil, monitorFrame)
-            do
-                broadcastButton:SetSize(20, 20)
-                broadcastButton:SetPoint("TOPRIGHT", monitorFrame, "TOPRIGHT", -3, -2)
-                broadcastButton:SetNormalTexture("Interface\\Common\\VoiceChat-Speaker")
-                broadcastButton:SetPushedTexture("Interface\\Common\\VoiceChat-Speaker")
-                broadcastButton:SetHighlightTexture("Interface\\Common\\VoiceChat-Speaker")
-                broadcastButton:SetScript("OnClick", function()
-                    if not TJ.IsLeader() then return end
-                    if broadcastCD then
-                        UIErrorsFrame:AddMessage(L["批量提醒正在冷却中"], 1, 0, 0)
-                        return
-                    end
-                    local hasReminder
-                    for _, row in ipairs(rows) do
-                        local buffInfo = row.buffInfo
-                        if IsMonitorRowEnabled(row) and not buffInfo.noBroadcast and row.missing and #row.missing > 0 then
-                            hasReminder = true
-                            SendMissingWhisper(row, true)
-                        end
-                    end
-                    if hasReminder then
-                        broadcastCD = true
-                        After(CLICK_ALL_CD, function()
-                            broadcastCD = nil
-                        end)
-                    end
-                end)
-                broadcastButton:SetScript("OnEnter", function(self)
-                    if TJ.ButtonIsInRight(self) then
-                        GameTooltip:SetOwner(self, "ANCHOR_LEFT", 0, 0)
+                        monitorSaved.filters[filterRow.monitorKey] = 0
                     else
-                        GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0, 0)
+                        monitorSaved.filters[filterRow.monitorKey] = nil
                     end
-                    GameTooltip:AddLine(L["批量提醒%s"]:format(TJ.IsLeader() and '' or L['|cffff0000（仅团长/助理可用）']), 1, 1, 1)
-                    GameTooltip:AddLine(L["密语提醒所有团队BUFF的负责人（不含食物）。"], 1, .82, 0, true)
-                    local c = 0
-                    for _, row in ipairs(rows) do
-                        if IsMonitorRowEnabled(row) and not row.buffInfo.noBroadcast and row.missing and #row.missing > 0 then
-                            local responsibility, responsibilityUnit = GetResponsibilityUnit(row.buffIndex)
-                            if responsibility then
-                                if c == 0 then
-                                    GameTooltip:AddLine(' ')
-                                end
-                                local icon = AddTexture(row.icon:GetTexture())
-                                local buffLink = row.buffLink or TJ.Buff[row.buffIndex].title.link or row.name
-                                GameTooltip:AddLine(format(L["%s%s：%s"], icon, buffLink, ns.SetClassCFF(responsibility)), 1, .82, 0)
-                                c = c + 1
+                    UpdateMonitorLayout()
+                    UpdateMonitor()
+                end,
+            })
+        end
+        local frameStrataMenu = {}
+        for _, option in ipairs(frameStrataOptions) do
+            local strata = option.value
+            tinsert(frameStrataMenu, {
+                text = option.text,
+                checked = function()
+                    return monitorSaved.frameStrata == strata
+                end,
+                func = function()
+                    monitorSaved.frameStrata = strata
+                    monitorFrame:SetFrameStrata(strata)
+                    LibBG:CloseDropDownMenus()
+                end,
+            })
+        end
+        local frameScaleMenu = {}
+        for _, percent in ipairs(frameScaleOptions) do
+            local scale = percent / 100
+            tinsert(frameScaleMenu, {
+                text = format(L["%s%%"], percent),
+                checked = function()
+                    return monitorSaved.scale == scale
+                end,
+                func = function()
+                    monitorSaved.scale = scale
+                    monitorFrame:SetScale(scale)
+                    LibBG:CloseDropDownMenus()
+                end,
+            })
+        end
+        local menu = {
+            {
+                text = L["团队BUFF常驻监控"],
+                isTitle = true,
+                notCheckable = true,
+            },
+            {
+                text = monitorSaved.lock == 1 and L["解锁界面"] or L["锁定界面"],
+                notCheckable = true,
+                func = function()
+                    monitorSaved.lock = monitorSaved.lock == 1 and 0 or 1
+                    LibBG:CloseDropDownMenus()
+                end,
+            },
+            {
+                text = L["隐藏界面"],
+                notCheckable = true,
+                func = function()
+                    TJ.SetBuffMonitorShown(false)
+                    LibBG:CloseDropDownMenus()
+                end,
+            },
+            TJ.CreateDropDownSeparator(),
+            {
+                text = L["重置爆发药水记录"],
+                notCheckable = true,
+                func = function()
+                    if TJ.ResetBurstPotionMonitor then
+                        TJ.ResetBurstPotionMonitor()
+                    end
+                    LibBG:CloseDropDownMenus()
+                end,
+            },
+            {
+                text = L["BUFF过滤"],
+                hasArrow = true,
+                notCheckable = true,
+                menuList = filterMenu,
+            },
+            {
+                text = L["框架层级"],
+                hasArrow = true,
+                notCheckable = true,
+                menuList = frameStrataMenu,
+            },
+            {
+                text = L["界面缩放"],
+                hasArrow = true,
+                notCheckable = true,
+                menuList = frameScaleMenu,
+            },
+            {
+                text = L["监控宠物"],
+                checked = function()
+                    return monitorSaved.monitorPet == 1
+                end,
+                isNotRadio = true,
+                func = function()
+                    monitorSaved.monitorPet = monitorSaved.monitorPet == 1 and 0 or 1
+                    UpdateMonitor()
+                end,
+            },
+
+            TJ.CreateDropDownSeparator(),
+            {
+                text = L["布局"],
+                isTitle = true,
+                notCheckable = true,
+            },
+            {
+                text = L["单列布局"],
+                checked = monitorSaved.layout == 1,
+                func = function()
+                    monitorSaved.layout = 1
+                    UpdateMonitorLayout()
+                    LibBG:CloseDropDownMenus()
+                end,
+            },
+            {
+                text = L["双列布局"],
+                checked = monitorSaved.layout == 2,
+                func = function()
+                    monitorSaved.layout = 2
+                    UpdateMonitorLayout()
+                    LibBG:CloseDropDownMenus()
+                end,
+            },
+            {
+                text = L["单行布局"],
+                checked = monitorSaved.layout == 3,
+                func = function()
+                    monitorSaved.layout = 3
+                    UpdateMonitorLayout()
+                    LibBG:CloseDropDownMenus()
+                end,
+            },
+
+            TJ.CreateDropDownSeparator(),
+            {
+                text = CANCEL,
+                notCheckable = true,
+                func = function()
+                    LibBG:CloseDropDownMenus()
+                end,
+            }
+        }
+        LibBG:EasyMenu(menu, TJ.dropDown, "cursor", 0, 0, "MENU", 2)
+    end
+
+    -- 主界面
+    monitorFrame = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    do
+        monitorFrame:SetSize(150, 28)
+        monitorFrame:SetScale(monitorSaved.scale)
+        monitorFrame:SetFrameStrata(monitorSaved.frameStrata)
+        monitorFrame:SetClampedToScreen(true)
+        monitorFrame:SetMovable(true)
+        monitorFrame:EnableMouse(true)
+        monitorFrame:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 1,
+        })
+        monitorFrame:SetFrameLevel(20)
+        monitorFrame:SetToplevel(true)
+        monitorFrame:SetBackdropColor(.02, .02, .02, .85)
+        local r, g, b = ns.GetClassRGB(nil, "player")
+        monitorFrame:SetBackdropBorderColor(r, g, b, TJ.borderAlpha)
+        TJ.BuffMonitorFrame = monitorFrame
+
+        local savedPoint = monitorSaved.point
+        if savedPoint then
+            monitorFrame:SetPoint(savedPoint.point or "CENTER", UIParent,
+                savedPoint.relativePoint or savedPoint.point or "CENTER", savedPoint.x or 0, savedPoint.y or 0)
+        else
+            monitorFrame:SetPoint("LEFT", UIParent, "LEFT", 0, 0)
+        end
+
+        StartMonitorMoving = function()
+            LibBG.CloseDropDownMenus()
+            monitorFrame.isMoving = true
+            monitorFrame:StartMoving()
+        end
+        StopMonitorMoving = function()
+            if not monitorFrame.isMoving then return end
+            monitorFrame.isMoving = nil
+            monitorFrame:StopMovingOrSizing()
+            local point, _, relativePoint, x, y = monitorFrame:GetPoint(1)
+            monitorSaved.point = { point = point, relativePoint = relativePoint, x = x, y = y }
+        end
+
+        monitorFrame:SetScript("OnMouseDown", function(self, button)
+            if button == "LeftButton" and (monitorSaved.lock ~= 1 or IsShiftKeyDown()) then
+                StartMonitorMoving()
+            end
+        end)
+        monitorFrame:SetScript("OnMouseUp", function(self, button)
+            if button == "LeftButton" and self.isMoving then
+                StopMonitorMoving()
+            elseif button == "RightButton" then
+                OpenMonitorMenu(self)
+            end
+        end)
+        monitorFrame:SetScript("OnLeave", GameTooltip_Hide)
+
+        title = monitorFrame:CreateFontString(nil, "OVERLAY")
+        title:SetPoint("TOPLEFT", 7, -5)
+        title:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
+        title:SetText(L["团队BUFF"])
+        title:SetTextColor(1, .82, 0)
+        title:SetWidth(title:GetStringWidth() + 10)
+        title:SetWordWrap(false)
+        title:SetJustifyH("LEFT")
+
+        -- 批量密语
+        broadcastButton = CreateFrame("Button", nil, monitorFrame)
+        do
+            broadcastButton:SetSize(20, 20)
+            broadcastButton:SetPoint("TOPRIGHT", monitorFrame, "TOPRIGHT", -3, -2)
+            broadcastButton:SetNormalTexture("Interface\\Common\\VoiceChat-Speaker")
+            broadcastButton:SetPushedTexture("Interface\\Common\\VoiceChat-Speaker")
+            broadcastButton:SetHighlightTexture("Interface\\Common\\VoiceChat-Speaker")
+            broadcastButton:SetScript("OnClick", function()
+                if not TJ.IsLeader() then return end
+                if broadcastCD then
+                    UIErrorsFrame:AddMessage(L["批量提醒正在冷却中"], 1, 0, 0)
+                    return
+                end
+                local hasReminder
+                for _, row in ipairs(rows) do
+                    local buffInfo = row.buffInfo
+                    if IsMonitorRowEnabled(row) and not buffInfo.noBroadcast and row.missing and #row.missing > 0 then
+                        hasReminder = true
+                        SendMissingWhisper(row, true)
+                    end
+                end
+                if hasReminder then
+                    broadcastCD = true
+                    After(CLICK_ALL_CD, function()
+                        broadcastCD = nil
+                    end)
+                end
+            end)
+            broadcastButton:SetScript("OnEnter", function(self)
+                if TJ.ButtonIsInRight(self) then
+                    GameTooltip:SetOwner(self, "ANCHOR_LEFT", 0, 0)
+                else
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0, 0)
+                end
+                GameTooltip:AddLine(L["批量提醒%s"]:format(TJ.IsLeader() and '' or L['|cffff0000（仅团长/助理可用）']), 1, 1, 1)
+                GameTooltip:AddLine(L["密语提醒所有团队BUFF的负责人（不含食物）。"], 1, .82, 0, true)
+                local c = 0
+                for _, row in ipairs(rows) do
+                    if IsMonitorRowEnabled(row) and not row.buffInfo.noBroadcast and row.missing and #row.missing > 0 then
+                        local responsibility, responsibilityUnit = GetResponsibilityUnit(row.buffIndex)
+                        if responsibility then
+                            if c == 0 then
+                                GameTooltip:AddLine(' ')
                             end
+                            local icon = AddTexture(row.icon:GetTexture())
+                            local buffLink = row.buffLink or TJ.Buff[row.buffIndex].title.link or row.name
+                            GameTooltip:AddLine(format(L["%s%s：%s"], icon, buffLink, ns.SetClassCFF(responsibility)), 1, .82, 0)
+                            c = c + 1
                         end
                     end
-                    GameTooltip:Show()
-                end)
-                broadcastButton:SetScript("OnLeave", GameTooltip_Hide)
-            end
-        end
-
-        GetResponsibilityUnit = function(buffIndex)
-            if not buffIndex then return end
-            local edit = TJ.Buff[buffIndex].edit
-            local responsibility = edit.player or TJ.ClearCode(edit:GetText())
-            if not responsibility or responsibility == "" then return end
-            local raidIndex = TJ.raidRosterName[responsibility]
-            if not raidIndex then
-                responsibility = TJ.GSN(responsibility)
-                raidIndex = TJ.raidRosterName[responsibility]
-            end
-            if not raidIndex then return responsibility end
-            return responsibility, "raid" .. raidIndex
-        end
-
-        local function GetMissingClassSuffix(row)
-            if not row.buffInfo.Pally then return "" end
-            local classAdded = {}
-            local classNames = {}
-            for _, missing in ipairs(row.missing) do
-                local class = missing.class
-                if class and not classAdded[class] then
-                    classAdded[class] = true
-                    tinsert(classNames, ns.GetClassName(class) or class)
                 end
-            end
-            if #classNames == 0 then return "" end
-            return format(L["（职业：%s）"], table.concat(classNames, L["、"]))
-        end
-
-        SendMissingWhisper = function(row, ignoreClickCD)
-            if not IsInRaid(1) then return end
-            if clickCD[row.buffIndex] and not ignoreClickCD then
-                UIErrorsFrame:AddMessage(L["该BUFF提醒正在冷却中"], 1, 0, 0)
-                return
-            end
-            if not row.missing or #row.missing == 0 then
-                return
-            end
-
-            local responsibility, responsibilityUnit = GetResponsibilityUnit(row.buffIndex)
-            if not responsibility then
-                return
-            elseif not responsibilityUnit then
-                UIErrorsFrame:AddMessage(format(L["%s已不在团队中"], ns.SetClassCFF(responsibility)), 1, 0, 0)
-                return
-            elseif not UnitIsConnected(responsibilityUnit) then
-                UIErrorsFrame:AddMessage(format(L["%s当前离线"], ns.SetClassCFF(responsibility)), 1, 0, 0)
-                return
-            end
-
-            local buffLink = row.buffLink or TJ.Buff[row.buffIndex].title.link or row.name
-            local message
-            if #row.missing > 5 then
-                message = format(L["有%s名玩家缺少%s"], #row.missing, buffLink)
-            else
-                local players = {}
-                for _, missing in ipairs(row.missing) do
-                    tinsert(players, missing.point .. missing.name)
-                end
-                message = format(L["有%s名玩家缺少%s：%s"], #row.missing, buffLink, table.concat(players, L["，"]))
-            end
-            message = message .. GetMissingClassSuffix(row)
-            SendChatMessage(message, "WHISPER", nil, TJ.GFN(responsibility))
-            clickCD[row.buffIndex] = true
-            After(CLICK_CD, function()
-                clickCD[row.buffIndex] = nil
+                GameTooltip:Show()
             end)
+            broadcastButton:SetScript("OnLeave", GameTooltip_Hide)
         end
-        local function SendMissingPlayersWhisper(row)
-            if not IsInRaid(1) or not row.missing or #row.missing == 0 or #row.missing > 5 then return end
-            if missingWhisperCD[row.buffInfo] then
-                UIErrorsFrame:AddMessage(format(L["%s提醒正在冷却中"], row.name), 1, 0, 0)
-                return
+    end
+
+    GetResponsibilityUnit = function(buffIndex)
+        if not buffIndex then return end
+        local edit = TJ.Buff[buffIndex].edit
+        local responsibility = edit.player or TJ.ClearCode(edit:GetText())
+        if not responsibility or responsibility == "" then return end
+        local raidIndex = TJ.raidRosterName[responsibility]
+        if not raidIndex then
+            responsibility = TJ.GSN(responsibility)
+            raidIndex = TJ.raidRosterName[responsibility]
+        end
+        if not raidIndex then return responsibility end
+        return responsibility, "raid" .. raidIndex
+    end
+
+    local function GetMissingClassSuffix(row)
+        if not row.buffInfo.Pally then return "" end
+        local classAdded = {}
+        local classNames = {}
+        for _, missing in ipairs(row.missing) do
+            local class = missing.class
+            if class and not classAdded[class] then
+                classAdded[class] = true
+                tinsert(classNames, ns.GetClassName(class) or class)
             end
+        end
+        if #classNames == 0 then return "" end
+        return format(L["（职业：%s）"], table.concat(classNames, L["、"]))
+    end
+
+    SendMissingWhisper = function(row, ignoreClickCD)
+        if not IsInRaid(1) then return end
+        if clickCD[row.buffIndex] and not ignoreClickCD then
+            UIErrorsFrame:AddMessage(L["该BUFF提醒正在冷却中"], 1, 0, 0)
+            return
+        end
+        if not row.missing or #row.missing == 0 then
+            return
+        end
+
+        local responsibility, responsibilityUnit = GetResponsibilityUnit(row.buffIndex)
+        if not responsibility then
+            return
+        elseif not responsibilityUnit then
+            UIErrorsFrame:AddMessage(format(L["%s已不在团队中"], ns.SetClassCFF(responsibility)), 1, 0, 0)
+            return
+        elseif not UnitIsConnected(responsibilityUnit) then
+            UIErrorsFrame:AddMessage(format(L["%s当前离线"], ns.SetClassCFF(responsibility)), 1, 0, 0)
+            return
+        end
+
+        local buffLink = row.buffLink or TJ.Buff[row.buffIndex].title.link or row.name
+        local message
+        if #row.missing > 5 then
+            message = format(L["有%s名玩家缺少%s"], #row.missing, buffLink)
+        else
+            local players = {}
             for _, missing in ipairs(row.missing) do
-                local missingBuff = missing.expected and TJ.ClearCode(missing.expected, true) or row.name
-                SendChatMessage(format(L["你缺少%s，请及时补充。"], missingBuff), "WHISPER", nil, TJ.GFN(missing.name))
+                tinsert(players, missing.point .. missing.name)
             end
-            missingWhisperCD[row.buffInfo] = true
-            After(CLICK_CD, function()
-                missingWhisperCD[row.buffInfo] = nil
-            end)
+            message = format(L["有%s名玩家缺少%s：%s"], #row.missing, buffLink, table.concat(players, L["，"]))
         end
-
-        local burstPotionOrder = { 28714, 53908, 53909, 53762, 1282971 }
-        local function GetMonitorMemberRGB(member)
-            if member.class then
-                return GetClassColor(member.class)
-            end
-            return ns.GetClassRGB(member.name)
+        message = message .. GetMissingClassSuffix(row)
+        SendChatMessage(message, "WHISPER", nil, TJ.GFN(responsibility))
+        clickCD[row.buffIndex] = true
+        After(CLICK_CD, function()
+            clickCD[row.buffIndex] = nil
+        end)
+    end
+    local function SendMissingPlayersWhisper(row)
+        if not IsInRaid(1) or not row.missing or #row.missing == 0 or #row.missing > 5 then return end
+        if missingWhisperCD[row.buffInfo] then
+            UIErrorsFrame:AddMessage(format(L["%s提醒正在冷却中"], row.name), 1, 0, 0)
+            return
         end
+        for _, missing in ipairs(row.missing) do
+            local missingBuff = missing.expected and TJ.ClearCode(missing.expected, true) or row.name
+            SendChatMessage(format(L["你缺少%s，请及时补充。"], missingBuff), "WHISPER", nil, TJ.GFN(missing.name))
+        end
+        missingWhisperCD[row.buffInfo] = true
+        After(CLICK_CD, function()
+            missingWhisperCD[row.buffInfo] = nil
+        end)
+    end
 
-        local function GetBurstPotionUsageText(used)
-            local texts = {}
-            local added = {}
-            local function AddSpell(spellID)
-                local count = used.potions[spellID]
-                if not count then return end
-                added[spellID] = true
-                local c = C_Spell.GetSpellTexture(spellID)
-                local icon = AddTexture(c)
-                local spell = C_Spell.GetSpellLink(spellID) or GetSpellInfo(spellID) or spellID
-                tinsert(texts, format(L["%s%s|cffffffff×%s|r"], icon, spell, count))
-            end
-            for _, spellID in ipairs(burstPotionOrder) do
+    local burstPotionOrder = { 28714, 53908, 53909, 53762, 1282971 }
+    local function GetMonitorMemberRGB(member)
+        if member.class then
+            return GetClassColor(member.class)
+        end
+        return ns.GetClassRGB(member.name)
+    end
+
+    local function GetBurstPotionUsageText(used)
+        local texts = {}
+        local added = {}
+        local function AddSpell(spellID)
+            local count = used.potions[spellID]
+            if not count then return end
+            added[spellID] = true
+            local c = C_Spell.GetSpellTexture(spellID)
+            local icon = AddTexture(c)
+            local spell = C_Spell.GetSpellLink(spellID) or GetSpellInfo(spellID) or spellID
+            tinsert(texts, format(L["%s%s|cffffffff×%s|r"], icon, spell, count))
+        end
+        for _, spellID in ipairs(burstPotionOrder) do
+            AddSpell(spellID)
+        end
+        for spellID in pairs(used.potions) do
+            if not added[spellID] then
                 AddSpell(spellID)
             end
-            for spellID in pairs(used.potions) do
-                if not added[spellID] then
-                    AddSpell(spellID)
-                end
-            end
-            return table.concat(texts, L["，"])
         end
+        return table.concat(texts, L["，"])
+    end
 
-        local function AddMonitorMemberLine(member, suffix)
-            local r, g, b = GetMonitorMemberRGB(member)
-            GameTooltip:AddLine("    " .. member.point .. member.name .. (suffix or ""), r, g, b)
+    local function AddMonitorMemberLine(member, suffix)
+        local r, g, b = GetMonitorMemberRGB(member)
+        GameTooltip:AddLine("    " .. member.point .. TJ.GetIconFormName(member.name) .. (suffix or ""), r, g, b)
+    end
+
+    local function GetPlayerIcon(name)
+        local text = TJ.GetIconFormName(name)
+        if text == name then return "" end
+        return text:sub(1, #text - #name)
+    end
+
+    local function OnEnter(self)
+        if TJ.ButtonIsInRight(self) then
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT", 0, 0)
+        else
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0, 0)
         end
-
-        local function OnEnter(self)
-            if TJ.ButtonIsInRight(self) then
-                GameTooltip:SetOwner(self, "ANCHOR_LEFT", 0, 0)
-            else
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0, 0)
-            end
-            GameTooltip:AddLine(AddTexture(self.icon:GetTexture()) .. self.name, 1, 1, 1)
-            local show = false
-            if self.buffInfo.countMode == "burstPotion" and self.isActive then
-                if #self.used > 0 then
-                    GameTooltip:AddLine(L["已使用："], .2, 1, .2)
-                    for _, used in ipairs(self.used) do
-                        AddMonitorMemberLine(used, L["："] .. GetBurstPotionUsageText(used))
-                    end
-                    show = true
-                end
-                if #self.missing > 0 then
-                    if show then
-                        GameTooltip:AddLine(" ")
-                    end
-                    GameTooltip:AddLine(self.buffInfo.missingTitle, 1, .2, .2)
-                    for _, missing in ipairs(self.missing) do
-                        AddMonitorMemberLine(missing)
-                    end
-                    show = true
-                end
-            elseif #self.missing > 0 then
-                local missingTitle = self.buffInfo.missingTitle or
-                    (self.buffInfo.ignoreExpiration and L["缺少："] or L["缺少（含不足%s分钟）："]:format(floor(EXPIRE_TIME / 60)))
-                GameTooltip:AddLine(missingTitle, 1, .2, .2)
-                for _, v in ipairs(self.missing) do
-                    local text = '    ' .. v.point .. v.name
-                    if v.expected and v.expected ~= "" then
-                        text = text .. L["："] .. v.expected
-                    end
-                    local r, g, b = GetMonitorMemberRGB(v)
-                    GameTooltip:AddLine(text, r, g, b)
+        GameTooltip:AddLine(AddTexture(self.icon:GetTexture()) .. self.name, 1, 1, 1)
+        local show = false
+        if self.buffInfo.countMode == "burstPotion" and self.isActive then
+            if #self.used > 0 then
+                GameTooltip:AddLine(L["已使用："], .2, 1, .2)
+                for _, used in ipairs(self.used) do
+                    AddMonitorMemberLine(used, L["："] .. GetBurstPotionUsageText(used))
                 end
                 show = true
             end
-            if self.buffInfo.inactiveText and not self.isActive then
-                GameTooltip:AddLine(self.buffInfo.inactiveText, .7, .7, .7)
+            if #self.missing > 0 then
+                if show then
+                    GameTooltip:AddLine(" ")
+                end
+                GameTooltip:AddLine(self.buffInfo.missingTitle, 1, .2, .2)
+                for _, missing in ipairs(self.missing) do
+                    AddMonitorMemberLine(missing)
+                end
                 show = true
             end
-            if TJ.IsLeader() then
-                if self.buffInfo.whisperMissing and #self.missing > 0 then
-                    GameTooltip:AddLine(' ')
-                    if #self.missing <= 5 then
-                        GameTooltip:AddLine(format(L["左键密语缺少%s的玩家"], self.name), 1, .82, 0)
-                    else
-                        GameTooltip:AddLine(format(L["缺少%s的人数太多，无法密语。"], self.name), 1, .2, .2, true)
-                    end
-                elseif not self.buffInfo.noWhisper then
-                    local responsibility, responsibilityUnit = GetResponsibilityUnit(self.buffIndex)
-                    if responsibility then
-                        GameTooltip:AddLine(' ')
-                        GameTooltip:AddLine(format(L["左键密语责任人：%s"], ns.SetClassCFF(responsibility)), 1, .82, 0)
-                    end
+        elseif #self.missing > 0 then
+            local missingTitle = self.buffInfo.missingTitle or
+                (self.buffInfo.ignoreExpiration and L["缺少："] or L["缺少（含不足%s分钟）："]:format(floor(EXPIRE_TIME / 60)))
+            GameTooltip:AddLine(missingTitle, 1, .2, .2)
+            for _, v in ipairs(self.missing) do
+                local text = '    ' .. v.point .. TJ.GetIconFormName(v.name)
+                if v.expected and v.expected ~= "" then
+                    text = text .. L["："] .. v.expected
                 end
+                local r, g, b = GetMonitorMemberRGB(v)
+                GameTooltip:AddLine(text, r, g, b)
             end
-            if show then
-                GameTooltip:Show()
-            end
+            show = true
         end
-
-        local monitorEntries = {}
-        for buffIndex, buffInfo in ipairs(buffTbl) do
-            if buffInfo.monitor then
-                tinsert(monitorEntries, { buffIndex = buffIndex, buffInfo = buffInfo })
-            end
+        if self.buffInfo.inactiveText and not self.isActive then
+            GameTooltip:AddLine(self.buffInfo.inactiveText, .7, .7, .7)
+            show = true
         end
-        table.sort(monitorEntries, function(a, b)
-            return (a.buffInfo.monitorOrder or a.buffIndex) < (b.buffInfo.monitorOrder or b.buffIndex)
-        end)
-        tinsert(monitorEntries, { buffInfo = flaskInfo })
-        tinsert(monitorEntries, { buffInfo = personalBuffInfo })
-        tinsert(monitorEntries, { buffInfo = focusMagicInfo })
-        tinsert(monitorEntries, { buffInfo = burstPotionInfo })
-
-        -- 条目
-        for _, entry in ipairs(monitorEntries) do
-            local buffIndex = entry.buffIndex
-            local buffInfo = entry.buffInfo
-            local row = CreateFrame("Frame", nil, monitorFrame)
-            row:SetHeight(20)
-            row:EnableMouse(true)
-            row.buffIndex = buffIndex
-            row.buffInfo = buffInfo
-            row.monitorKey = tostring(buffInfo.monitorKey or buffInfo.displayID or buffInfo.monitorDisplayID)
-            row.name = buffInfo.shortName or buffInfo.tipKey
-            if buffInfo.monitorDisplayID then
-                row.buffLink = C_Spell.GetSpellLink(buffInfo.monitorDisplayID)
-            end
-            row.missing = {}
-            row.used = {}
-            row.unknown = {}
-
-            row.icon = row:CreateTexture(nil, "OVERLAY")
-            row.icon:SetSize(row:GetHeight(), row:GetHeight())
-            row.icon:SetPoint("LEFT", 1, 0)
-            row.icon:SetTexCoord(unpack(TJ.iconTexCoord))
-            local displayID = buffInfo.monitorDisplayID or buffInfo.displayID
-            if buffInfo.auraID or not buffInfo.isItem then
-                row.icon:SetTexture(C_Spell.GetSpellTexture(displayID))
-            else
-                row.icon:SetTexture(select(5, GetItemInfoInstant(displayID)))
-            end
-
-            row.bar = CreateFrame("StatusBar", nil, row)
-            row.bar:SetPoint("LEFT", row.icon, "RIGHT", 0, 0)
-            row.bar:SetPoint("RIGHT", row, "RIGHT", 0, 0)
-            row.bar:SetHeight(row:GetHeight())
-            row.bar:SetStatusBarTexture("Interface/ChatFrame/ChatFrameBackground")
-            row.bar:SetMinMaxValues(0, 1)
-            row.bar:SetValue(0)
-
-            row.bar.bg = row.bar:CreateTexture(nil, "BACKGROUND")
-            row.bar.bg:SetAllPoints()
-            row.bar.bg:SetColorTexture(.12, .12, .12, .8)
-
-            row.highlight = row.bar:CreateTexture(nil, "OVERLAY")
-            row.highlight:SetAllPoints()
-            row.highlight:SetColorTexture(1, 1, 1, .12)
-            row.highlight:Hide()
-
-            row.label = row.bar:CreateFontString(nil, "OVERLAY")
-            row.label:SetPoint("LEFT", row.icon, "RIGHT", 3, 0)
-            row.label:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
-            row.label:SetJustifyH("LEFT")
-            row.label:SetText(row.name)
-
-            row.count = row.bar:CreateFontString(nil, "OVERLAY")
-            row.count:SetPoint("RIGHT", row.bar, "RIGHT", -3, 0)
-            row.count:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
-            row:SetScript("OnMouseDown", function(self, button)
-                if button == "LeftButton" and IsShiftKeyDown() then
-                    self.isDraggingMonitor = true
-                    StartMonitorMoving()
-                end
-            end)
-            row:SetScript("OnMouseUp", function(self, button)
-                if button == "LeftButton" then
-                    if self.isDraggingMonitor then
-                        self.isDraggingMonitor = nil
-                        StopMonitorMoving()
-                        return
-                    end
-                    if TJ.IsLeader() then
-                        if self.buffInfo.whisperMissing then
-                            SendMissingPlayersWhisper(self)
-                        elseif not self.buffInfo.noWhisper then
-                            SendMissingWhisper(self)
-                        end
-                    end
-                elseif button == "RightButton" then
-                    OpenMonitorMenu(self)
-                end
-            end)
-            row:SetScript("OnEnter", function(self)
-                self.highlight:Show()
-                OnEnter(self)
-            end)
-            row:SetScript("OnLeave", function(self)
-                self.highlight:Hide()
-                GameTooltip_Hide()
-            end)
-            tinsert(rows, row)
-        end
-
-        IsMonitorRowEnabled = function(row)
-            return monitorSaved.filters[row.monitorKey] ~= 0
-        end
-
-        UpdateMonitorLayout = function()
-            title:ClearAllPoints()
-            broadcastButton:ClearAllPoints()
-            local visibleRows = {}
-            for _, row in ipairs(rows) do
-                if IsMonitorRowEnabled(row) then
-                    row:Show()
-                    tinsert(visibleRows, row)
+        if TJ.IsLeader() then
+            if self.buffInfo.whisperMissing and #self.missing > 0 then
+                GameTooltip:AddLine(' ')
+                if #self.missing <= 5 then
+                    GameTooltip:AddLine(format(L["左键密语缺少%s的玩家"], self.name), 1, .82, 0)
                 else
-                    row:Hide()
+                    GameTooltip:AddLine(format(L["缺少%s的人数太多，无法密语。"], self.name), 1, .2, .2, true)
+                end
+            elseif not self.buffInfo.noWhisper then
+                local responsibility, responsibilityUnit = GetResponsibilityUnit(self.buffIndex)
+                if responsibility then
+                    GameTooltip:AddLine(' ')
+                    local player = GetPlayerIcon(responsibility) .. ns.SetClassCFF(responsibility)
+                    GameTooltip:AddLine(format(L["左键密语责任人：%s"], player), 1, .82, 0)
                 end
             end
-            if monitorSaved.layout == 3 then
-                title:SetPoint("LEFT", monitorFrame, "LEFT", 7, 0)
-                broadcastButton:SetPoint("LEFT", title, "RIGHT", 3, 0)
-                local rowWidth = 100
-                local rowGap = 2
-                local previousRow
-                for _, row in ipairs(visibleRows) do
-                    row:ClearAllPoints()
-                    if previousRow then
-                        row:SetPoint("LEFT", previousRow, "RIGHT", rowGap, 0)
-                    else
-                        row:SetPoint("LEFT", broadcastButton, "RIGHT", 3, 0)
-                    end
-                    row:SetWidth(rowWidth)
-                    previousRow = row
-                end
-                local titleWidth = max(55, title:GetWidth())
-                local frameWidth = 5 + titleWidth + 3 + broadcastButton:GetWidth() + 3 +
-                    #visibleRows * rowWidth + max(0, #visibleRows - 1) * rowGap + 5
-                monitorFrame:SetSize(frameWidth, 24)
-                return
-            end
-
-            title:SetPoint("TOPLEFT", monitorFrame, "TOPLEFT", 7, -5)
-            broadcastButton:SetPoint("TOPRIGHT", monitorFrame, "TOPRIGHT", -3, -2)
-            local columns = monitorSaved.layout == 2 and 2 or 1
-            local frameWidth = columns == 2 and 240 or 150
-            local columnGap = 2
-            local columnWidth = (frameWidth - 10 - columnGap * (columns - 1)) / columns
-            for index, row in ipairs(visibleRows) do
-                local column = (index - 1) % columns
-                local line = floor((index - 1) / columns)
-                row:ClearAllPoints()
-                row:SetPoint("TOPLEFT", monitorFrame, "TOPLEFT",
-                    5 + column * (columnWidth + columnGap), -25 - line * 22)
-                row:SetWidth(columnWidth)
-            end
-            local lineCount = floor((#visibleRows + columns - 1) / columns)
-            monitorFrame:SetSize(frameWidth, 30 + lineCount * 22 - 2)
         end
-        UpdateMonitorLayout()
+        if show then
+            GameTooltip:Show()
+        end
+    end
 
-        local manaClass = {
-            PALADIN = true,
-            HUNTER = true,
-            PRIEST = true,
-            SHAMAN = true,
-            MAGE = true,
-            WARLOCK = true,
-            DRUID = true,
-        }
-        local petClassByOwnerClass = {
-            DEATHKNIGHT = "ROGUE",
-            HUNTER = "WARRIOR",
-            WARLOCK = "PALADIN",
-        }
-        local FELGUARD_NPC_ID = 17252
-        local function ShouldCountMember(buffInfo, rosterInfo)
-            local filter = buffInfo.monitorFilter
-            if not filter then return true end
-            if not rosterInfo then return false end
-            if filter == "physical" then
-                return TJ.Istank(rosterInfo) or TJ.Isdps1(rosterInfo) or rosterInfo.class == "HUNTER"
-            elseif filter == "wisdom" then
-                if rosterInfo.class == "DEATHKNIGHT" or rosterInfo.class == "WARRIOR" or
-                    rosterInfo.class == "ROGUE" then
-                    return false
-                elseif rosterInfo.class == "DRUID" then
-                    local talent = rosterInfo.talent or TuanJian.talentInfo[rosterInfo.name]
-                    if talent then
-                        return talent ~= 2
-                    end
-                    return not (TJ.Istank(rosterInfo) or TJ.Isdps1(rosterInfo))
+    local monitorEntries = {}
+    for buffIndex, buffInfo in ipairs(buffTbl) do
+        if buffInfo.monitor then
+            tinsert(monitorEntries, { buffIndex = buffIndex, buffInfo = buffInfo })
+        end
+    end
+    table.sort(monitorEntries, function(a, b)
+        return (a.buffInfo.monitorOrder or a.buffIndex) < (b.buffInfo.monitorOrder or b.buffIndex)
+    end)
+    tinsert(monitorEntries, { buffInfo = flaskInfo })
+    tinsert(monitorEntries, { buffInfo = personalBuffInfo })
+    if TJ.IsWLK then
+        tinsert(monitorEntries, { buffInfo = focusMagicInfo })
+    end
+    tinsert(monitorEntries, { buffInfo = burstPotionInfo })
+
+    -- 条目
+    for _, entry in ipairs(monitorEntries) do
+        local buffIndex = entry.buffIndex
+        local buffInfo = entry.buffInfo
+        local row = CreateFrame("Frame", nil, monitorFrame)
+        row:SetHeight(20)
+        row:EnableMouse(true)
+        row.buffIndex = buffIndex
+        row.buffInfo = buffInfo
+        row.monitorKey = tostring(buffInfo.monitorKey or buffInfo.displayID or buffInfo.monitorDisplayID)
+        row.name = buffInfo.shortName or buffInfo.tipKey
+        if buffInfo.monitorDisplayID then
+            row.buffLink = C_Spell.GetSpellLink(buffInfo.monitorDisplayID)
+        end
+        row.missing = {}
+        row.used = {}
+        row.unknown = {}
+
+        row.icon = row:CreateTexture(nil, "OVERLAY")
+        row.icon:SetSize(row:GetHeight(), row:GetHeight())
+        row.icon:SetPoint("LEFT", 1, 0)
+        row.icon:SetTexCoord(unpack(TJ.iconTexCoord))
+        local displayID = buffInfo.monitorDisplayID or buffInfo.displayID
+        if buffInfo.auraID or not buffInfo.isItem then
+            row.icon:SetTexture(C_Spell.GetSpellTexture(displayID))
+        else
+            row.icon:SetTexture(select(5, GetItemInfoInstant(displayID)))
+        end
+
+        row.bar = CreateFrame("StatusBar", nil, row)
+        row.bar:SetPoint("LEFT", row.icon, "RIGHT", 0, 0)
+        row.bar:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+        row.bar:SetHeight(row:GetHeight())
+        row.bar:SetStatusBarTexture("Interface/ChatFrame/ChatFrameBackground")
+        row.bar:SetMinMaxValues(0, 1)
+        row.bar:SetValue(0)
+
+        row.bar.bg = row.bar:CreateTexture(nil, "BACKGROUND")
+        row.bar.bg:SetAllPoints()
+        row.bar.bg:SetColorTexture(.12, .12, .12, .8)
+
+        row.highlight = row.bar:CreateTexture(nil, "OVERLAY")
+        row.highlight:SetAllPoints()
+        row.highlight:SetColorTexture(1, 1, 1, .12)
+        row.highlight:Hide()
+
+        row.label = row.bar:CreateFontString(nil, "OVERLAY")
+        row.label:SetPoint("LEFT", row.icon, "RIGHT", 3, 0)
+        row.label:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
+        row.label:SetJustifyH("LEFT")
+        row.label:SetText(row.name)
+
+        row.count = row.bar:CreateFontString(nil, "OVERLAY")
+        row.count:SetPoint("RIGHT", row.bar, "RIGHT", -3, 0)
+        row.count:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
+        row:SetScript("OnMouseDown", function(self, button)
+            if button == "LeftButton" and IsShiftKeyDown() then
+                self.isDraggingMonitor = true
+                StartMonitorMoving()
+            end
+        end)
+        row:SetScript("OnMouseUp", function(self, button)
+            if button == "LeftButton" then
+                if self.isDraggingMonitor then
+                    self.isDraggingMonitor = nil
+                    StopMonitorMoving()
+                    return
                 end
-                return true
-            elseif filter == "caster" then
-                return TJ.Ishealer(rosterInfo) or
-                    (rosterInfo.class ~= "HUNTER" and TJ.Isdps2(rosterInfo))
-            elseif filter == "mana" then
-                return manaClass[rosterInfo.class] == true
+                if TJ.IsLeader() then
+                    if self.buffInfo.whisperMissing then
+                        SendMissingPlayersWhisper(self)
+                    elseif not self.buffInfo.noWhisper then
+                        SendMissingWhisper(self)
+                    end
+                end
+            elseif button == "RightButton" then
+                OpenMonitorMenu(self)
+            end
+        end)
+        row:SetScript("OnEnter", function(self)
+            self.highlight:Show()
+            OnEnter(self)
+        end)
+        row:SetScript("OnLeave", function(self)
+            self.highlight:Hide()
+            GameTooltip_Hide()
+        end)
+        tinsert(rows, row)
+    end
+
+    IsMonitorRowEnabled = function(row)
+        return monitorSaved.filters[row.monitorKey] ~= 0
+    end
+
+    UpdateMonitorLayout = function()
+        title:ClearAllPoints()
+        broadcastButton:ClearAllPoints()
+        local visibleRows = {}
+        for _, row in ipairs(rows) do
+            if IsMonitorRowEnabled(row) then
+                row:Show()
+                tinsert(visibleRows, row)
+            else
+                row:Hide()
+            end
+        end
+        if monitorSaved.layout == 3 then
+            title:SetPoint("LEFT", monitorFrame, "LEFT", 7, 0)
+            broadcastButton:SetPoint("LEFT", title, "RIGHT", 3, 0)
+            local rowWidth = 100
+            local rowGap = 2
+            local previousRow
+            for _, row in ipairs(visibleRows) do
+                row:ClearAllPoints()
+                if previousRow then
+                    row:SetPoint("LEFT", previousRow, "RIGHT", rowGap, 0)
+                else
+                    row:SetPoint("LEFT", broadcastButton, "RIGHT", 3, 0)
+                end
+                row:SetWidth(rowWidth)
+                previousRow = row
+            end
+            local titleWidth = max(55, title:GetWidth())
+            local frameWidth = 5 + titleWidth + 3 + broadcastButton:GetWidth() + 3 +
+                #visibleRows * rowWidth + max(0, #visibleRows - 1) * rowGap + 5
+            monitorFrame:SetSize(frameWidth, 24)
+            return
+        end
+
+        title:SetPoint("TOPLEFT", monitorFrame, "TOPLEFT", 7, -5)
+        broadcastButton:SetPoint("TOPRIGHT", monitorFrame, "TOPRIGHT", -3, -2)
+        local columns = monitorSaved.layout == 2 and 2 or 1
+        local frameWidth = columns == 2 and 240 or 150
+        local columnGap = 2
+        local columnWidth = (frameWidth - 10 - columnGap * (columns - 1)) / columns
+        for index, row in ipairs(visibleRows) do
+            local column = (index - 1) % columns
+            local line = floor((index - 1) / columns)
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", monitorFrame, "TOPLEFT",
+                5 + column * (columnWidth + columnGap), -25 - line * 22)
+            row:SetWidth(columnWidth)
+        end
+        local lineCount = floor((#visibleRows + columns - 1) / columns)
+        monitorFrame:SetSize(frameWidth, 30 + lineCount * 22 - 2)
+    end
+    UpdateMonitorLayout()
+
+    local manaClass = {
+        PALADIN = true,
+        HUNTER = true,
+        PRIEST = true,
+        SHAMAN = true,
+        MAGE = true,
+        WARLOCK = true,
+        DRUID = true,
+    }
+    local petClassByOwnerClass = {
+        DEATHKNIGHT = "ROGUE",
+        HUNTER = "WARRIOR",
+        WARLOCK = "PALADIN",
+    }
+    local FELGUARD_NPC_ID = 17252
+    local function ShouldCountMember(buffInfo, rosterInfo)
+        local filter = buffInfo.monitorFilter
+        if not filter then return true end
+        if not rosterInfo then return false end
+        if filter == "physical" then
+            return TJ.Istank(rosterInfo) or TJ.Isdps1(rosterInfo) or rosterInfo.class == "HUNTER"
+        elseif filter == "wisdom" then
+            if rosterInfo.class == "DEATHKNIGHT" or rosterInfo.class == "WARRIOR" or
+                rosterInfo.class == "ROGUE" then
+                return false
+            elseif rosterInfo.class == "DRUID" then
+                local talent = rosterInfo.talent or TuanJian.talentInfo[rosterInfo.name]
+                if talent then
+                    return talent ~= 2
+                end
+                return not (TJ.Istank(rosterInfo) or TJ.Isdps1(rosterInfo))
             end
             return true
+        elseif filter == "caster" then
+            return TJ.Ishealer(rosterInfo) or
+                (rosterInfo.class ~= "HUNTER" and TJ.Isdps2(rosterInfo))
+        elseif filter == "mana" then
+            return manaClass[rosterInfo.class] == true
         end
+        return true
+    end
 
-        local auraInfoBySpellID = {}
-        local auraInfoByName = {}
-        local registeredAuraInfo = {}
-        local function RegisterAuraInfo(buffInfo)
-            if not buffInfo or registeredAuraInfo[buffInfo] then return end
-            registeredAuraInfo[buffInfo] = true
-            if buffInfo.auraName then
-                auraInfoByName[buffInfo.auraName] = auraInfoByName[buffInfo.auraName] or {}
-                tinsert(auraInfoByName[buffInfo.auraName], buffInfo)
-                return
-            end
-            for spellID in pairs(buffInfo.auraID or buffInfo.id or {}) do
-                auraInfoBySpellID[spellID] = auraInfoBySpellID[spellID] or {}
-                tinsert(auraInfoBySpellID[spellID], buffInfo)
-            end
+    local auraInfoBySpellID = {}
+    local auraInfoByName = {}
+    local registeredAuraInfo = {}
+    local function RegisterAuraInfo(buffInfo)
+        if not buffInfo or registeredAuraInfo[buffInfo] then return end
+        registeredAuraInfo[buffInfo] = true
+        if buffInfo.auraName then
+            auraInfoByName[buffInfo.auraName] = auraInfoByName[buffInfo.auraName] or {}
+            tinsert(auraInfoByName[buffInfo.auraName], buffInfo)
+            return
         end
-        for _, row in ipairs(rows) do
-            RegisterAuraInfo(row.buffInfo)
+        for spellID in pairs(buffInfo.auraID or buffInfo.id or {}) do
+            auraInfoBySpellID[spellID] = auraInfoBySpellID[spellID] or {}
+            tinsert(auraInfoBySpellID[spellID], buffInfo)
         end
-        for _, rule in pairs(personalBuffRules) do
-            RegisterAuraInfo(rule)
-        end
-        RegisterAuraInfo(paladinPersonalBuffRule)
-        RegisterAuraInfo(deathKnightPersonalBuffRule)
+    end
+    for _, row in ipairs(rows) do
+        RegisterAuraInfo(row.buffInfo)
+    end
+    for _, rule in pairs(personalBuffRules) do
+        RegisterAuraInfo(rule)
+    end
+    RegisterAuraInfo(paladinPersonalBuffRule)
+    RegisterAuraInfo(deathKnightPersonalBuffRule)
 
-        local function ScanUnitAuras(unit, focusMagicCasters)
-            local matchedAuraInfo = {}
-            local now = GetTime()
-            for auraIndex = 1, 60 do
-                local auraName, _, _, _, duration, expirationTime, source, _, _, spellID = UnitBuff(unit, auraIndex)
-                if not auraName then break end
-                if focusMagicCasters and spellID == focusMagicInfo.monitorDisplayID and source then
-                    local sourceGUID = UnitGUID(source)
-                    if sourceGUID then
-                        focusMagicCasters[sourceGUID] = true
+    local function ScanUnitAuras(unit, focusMagicCasters)
+        local matchedAuraInfo = {}
+        local now = GetTime()
+        for auraIndex = 1, 60 do
+            local auraName, _, _, _, duration, expirationTime, source, _, _, spellID = UnitBuff(unit, auraIndex)
+            if not auraName then break end
+            if focusMagicCasters and spellID == focusMagicInfo.monitorDisplayID and source then
+                local sourceGUID = UnitGUID(source)
+                if sourceGUID then
+                    focusMagicCasters[sourceGUID] = true
+                end
+            end
+            local valid = not duration or duration == 0 or not expirationTime or expirationTime == 0 or
+                expirationTime - now >= EXPIRE_TIME
+            local infos = auraInfoByName[auraName]
+            if infos then
+                for _, buffInfo in ipairs(infos) do
+                    if valid or buffInfo.ignoreExpiration then
+                        matchedAuraInfo[buffInfo] = true
                     end
                 end
-                local valid = not duration or duration == 0 or not expirationTime or expirationTime == 0 or
-                    expirationTime - now >= EXPIRE_TIME
-                local infos = auraInfoByName[auraName]
+            end
+            if spellID then
+                infos = auraInfoBySpellID[spellID]
                 if infos then
                     for _, buffInfo in ipairs(infos) do
                         if valid or buffInfo.ignoreExpiration then
@@ -1499,319 +1542,306 @@ TJ.Init(function()
                         end
                     end
                 end
-                if spellID then
-                    infos = auraInfoBySpellID[spellID]
-                    if infos then
-                        for _, buffInfo in ipairs(infos) do
-                            if valid or buffInfo.ignoreExpiration then
-                                matchedAuraInfo[buffInfo] = true
-                            end
-                        end
-                    end
+            end
+        end
+        return matchedAuraInfo
+    end
+
+    local function GetAuraState(auraState, buffInfo)
+        return auraState[buffInfo] == true
+    end
+
+    local function GetPersonalBuffRule(rosterInfo)
+        if not rosterInfo then return end
+        if rosterInfo.class == "PALADIN" then
+            return TJ.Istank(rosterInfo) and paladinPersonalBuffRule or nil
+        elseif rosterInfo.class == "DEATHKNIGHT" then
+            return TJ.Istank(rosterInfo) and deathKnightPersonalBuffRule or nil
+        end
+        return personalBuffRules[rosterInfo.class]
+    end
+
+    local function GetPersonalBuffText(rule)
+        if rule.expectedText then return rule.expectedText end
+        local function GetIconAndLink(spellID)
+            local o = C_Spell.GetSpellTexture(spellID)
+            local icon = AddTexture(o)
+            local link = C_Spell.GetSpellLink(spellID) or GetSpellInfo(spellID) or ""
+            return icon .. link
+        end
+        if rule.displayID then
+            return GetIconAndLink(rule.displayID)
+        end
+        local texts = {}
+        for _, spellID in ipairs(rule.displayIDs or {}) do
+            tinsert(texts, GetIconAndLink(spellID))
+        end
+        return table.concat(texts, "/")
+    end
+
+    UpdateMonitor = function()
+        if monitorSaved.show ~= 1 or not IsInRaid(1) then
+            monitorFrame:Hide()
+            return
+        end
+        monitorFrame:Show()
+        local raidPoint = TJ.GetRaidPoint()
+        local members = {}
+        local petMembers = {}
+        local burstPotionMembers = {}
+        local auraStateByRaidIndex = {}
+        local focusMagicCasters = {}
+        for raidIndex = 1, GetNumGroupMembers() do
+            local unit = "raid" .. raidIndex
+            if UnitExists(unit) and UnitIsConnected(unit) then
+                auraStateByRaidIndex[raidIndex] = ScanUnitAuras(unit, focusMagicCasters)
+                if not GetPartyAssignment("MAINASSIST", unit) then
+                    local name = TJ.GSN(UnitName(unit))
+                    local pointText = raidPoint[name] or "?-"
+                    local subgroup, subgroupIndex = strmatch(pointText, "^(%d+)%-(%d+)$")
+                    tinsert(burstPotionMembers, {
+                        guid = UnitGUID(unit),
+                        name = name,
+                        point = pointText .. " ",
+                        class = select(2, UnitClass(unit)),
+                        sortIndex = subgroup and tonumber(subgroup) * 10 + tonumber(subgroupIndex) or 999,
+                    })
                 end
             end
-            return matchedAuraInfo
         end
-
-        local function GetAuraState(auraState, buffInfo)
-            return auraState[buffInfo] == true
-        end
-
-        local function GetPersonalBuffRule(rosterInfo)
-            if not rosterInfo then return end
-            if rosterInfo.class == "PALADIN" then
-                return TJ.Istank(rosterInfo) and paladinPersonalBuffRule or nil
-            elseif rosterInfo.class == "DEATHKNIGHT" then
-                return TJ.Istank(rosterInfo) and deathKnightPersonalBuffRule or nil
-            end
-            return personalBuffRules[rosterInfo.class]
-        end
-
-        local function GetPersonalBuffText(rule)
-            if rule.expectedText then return rule.expectedText end
-            local function GetIconAndLink(spellID)
-                local o = C_Spell.GetSpellTexture(spellID)
-                local icon = AddTexture(o)
-                local link = C_Spell.GetSpellLink(spellID) or GetSpellInfo(spellID) or ""
-                return icon .. link
-            end
-            if rule.displayID then
-                return GetIconAndLink(rule.displayID)
-            end
-            local texts = {}
-            for _, spellID in ipairs(rule.displayIDs or {}) do
-                tinsert(texts, GetIconAndLink(spellID))
-            end
-            return table.concat(texts, "/")
-        end
-
-        UpdateMonitor = function()
-            if monitorSaved.show ~= 1 or not IsInRaid(1) then
-                monitorFrame:Hide()
-                return
-            end
-            monitorFrame:Show()
-            local raidPoint = TJ.GetRaidPoint()
-            local members = {}
-            local petMembers = {}
-            local burstPotionMembers = {}
-            local auraStateByRaidIndex = {}
-            local focusMagicCasters = {}
-            for raidIndex = 1, GetNumGroupMembers() do
-                local unit = "raid" .. raidIndex
-                if UnitExists(unit) and UnitIsConnected(unit) then
-                    auraStateByRaidIndex[raidIndex] = ScanUnitAuras(unit, focusMagicCasters)
-                    if not GetPartyAssignment("MAINASSIST", unit) then
-                        local name = TJ.GSN(UnitName(unit))
-                        local pointText = raidPoint[name] or "?-"
-                        local subgroup, subgroupIndex = strmatch(pointText, "^(%d+)%-(%d+)$")
-                        tinsert(burstPotionMembers, {
-                            guid = UnitGUID(unit),
-                            name = name,
-                            point = pointText .. " ",
-                            class = select(2, UnitClass(unit)),
-                            sortIndex = subgroup and tonumber(subgroup) * 10 + tonumber(subgroupIndex) or 999,
+        for raidIndex = 1, GetNumGroupMembers() do
+            local unit = "raid" .. raidIndex
+            if UnitExists(unit) and UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) and
+                not GetPartyAssignment("MAINASSIST", unit) then
+                local name = TJ.GSN(UnitName(unit))
+                local rosterInfo = TJ.raidRosterInfo[raidIndex]
+                local pointText = raidPoint[name] or "?-"
+                local subgroup, subgroupIndex = strmatch(pointText, "^(%d+)%-(%d+)$")
+                local sortIndex = subgroup and tonumber(subgroup) * 10 + tonumber(subgroupIndex) or 999
+                local point = pointText .. " "
+                tinsert(members, {
+                    rosterInfo = rosterInfo,
+                    guid = UnitGUID(unit),
+                    name = name,
+                    point = point,
+                    auraState = auraStateByRaidIndex[raidIndex],
+                    class = rosterInfo and rosterInfo.class or select(2, UnitClass(unit)),
+                    sortIndex = sortIndex,
+                })
+                local petClass = rosterInfo and petClassByOwnerClass[rosterInfo.class]
+                local petUnit = "raidpet" .. raidIndex
+                local isValidPet = monitorSaved.monitorPet == 1 and petClass and UnitExists(petUnit) and
+                    not UnitIsDeadOrGhost(petUnit)
+                if isValidPet and rosterInfo.class == "WARLOCK" then
+                    isValidPet = TJ.GetNPCID(UnitGUID(petUnit)) == FELGUARD_NPC_ID
+                end
+                if isValidPet then
+                    local petName = TJ.GSN(UnitName(petUnit))
+                    if petName then
+                        tinsert(petMembers, {
+                            rosterInfo = {
+                                name = petName,
+                                class = petClass,
+                                combatRole = "DAMAGER",
+                            },
+                            name = petName,
+                            displayName = format(L["宠物:%s(%s)"], petName, name),
+                            point = "",
+                            auraState = ScanUnitAuras(petUnit),
+                            isPet = true,
+                            class = petClass,
+                            sortIndex = sortIndex,
                         })
                     end
                 end
             end
-            for raidIndex = 1, GetNumGroupMembers() do
-                local unit = "raid" .. raidIndex
-                if UnitExists(unit) and UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) and
-                    not GetPartyAssignment("MAINASSIST", unit) then
-                    local name = TJ.GSN(UnitName(unit))
-                    local rosterInfo = TJ.raidRosterInfo[raidIndex]
-                    local pointText = raidPoint[name] or "?-"
-                    local subgroup, subgroupIndex = strmatch(pointText, "^(%d+)%-(%d+)$")
-                    local sortIndex = subgroup and tonumber(subgroup) * 10 + tonumber(subgroupIndex) or 999
-                    local point = pointText .. " "
-                    tinsert(members, {
-                        rosterInfo = rosterInfo,
-                        guid = UnitGUID(unit),
-                        name = name,
-                        point = point,
-                        auraState = auraStateByRaidIndex[raidIndex],
-                        class = rosterInfo and rosterInfo.class or select(2, UnitClass(unit)),
-                        sortIndex = sortIndex,
-                    })
-                    local petClass = rosterInfo and petClassByOwnerClass[rosterInfo.class]
-                    local petUnit = "raidpet" .. raidIndex
-                    local isValidPet = monitorSaved.monitorPet == 1 and petClass and UnitExists(petUnit) and
-                        not UnitIsDeadOrGhost(petUnit)
-                    if isValidPet and rosterInfo.class == "WARLOCK" then
-                        isValidPet = TJ.GetNPCID(UnitGUID(petUnit)) == FELGUARD_NPC_ID
-                    end
-                    if isValidPet then
-                        local petName = TJ.GSN(UnitName(petUnit))
-                        if petName then
-                            tinsert(petMembers, {
-                                rosterInfo = {
-                                    name = petName,
-                                    class = petClass,
-                                    combatRole = "DAMAGER",
-                                },
-                                name = petName,
-                                displayName = format(L["宠物:%s(%s)"], petName, name),
-                                point = "",
-                                auraState = ScanUnitAuras(petUnit),
-                                isPet = true,
-                                class = petClass,
-                                sortIndex = sortIndex,
-                            })
-                        end
-                    end
-                end
-            end
-            table.sort(members, function(a, b)
-                return a.sortIndex < b.sortIndex
-            end)
-            table.sort(burstPotionMembers, function(a, b)
-                return a.sortIndex < b.sortIndex
-            end)
-            table.sort(petMembers, function(a, b)
-                return a.sortIndex < b.sortIndex
-            end)
-            for _, member in ipairs(petMembers) do
-                tinsert(members, member)
-            end
-            for _, row in ipairs(rows) do
-                wipe(row.missing)
-                wipe(row.used)
-                wipe(row.unknown)
-                row.has = nil
-                row.total = nil
-                if IsMonitorRowEnabled(row) then
-                    local buffInfo = row.buffInfo
-                    row.isActive = nil
-                    if buffInfo.countMode == "burstPotion" and not burstPotionActive then
-                        local total = #burstPotionMembers
-                        row.has = 0
-                        row.total = total
-                        row.count:SetText("0/" .. total)
-                        row.bar:SetMinMaxValues(0, max(1, total))
-                        row.bar:SetValue(0)
-                        row.bar:SetStatusBarColor(.35, .35, .35, .6)
-                        row.count:SetTextColor(.5, .5, .5)
-                    else
-                        row.isActive = true
-                        local has, total = 0, 0
-                        if buffInfo.countMode == "burstPotion" then
-                            for _, member in ipairs(burstPotionMembers) do
-                                total = total + 1
-                                local potions = burstPotionUsed[member.guid]
-                                if potions then
-                                    has = has + 1
-                                    tinsert(row.used, {
-                                        name = member.name,
-                                        point = member.point,
-                                        class = member.class,
-                                        potions = potions,
-                                    })
-                                else
-                                    tinsert(row.missing, {
-                                        name = member.name,
-                                        point = member.point,
-                                        class = member.class,
-                                    })
-                                end
+        end
+        table.sort(members, function(a, b)
+            return a.sortIndex < b.sortIndex
+        end)
+        table.sort(burstPotionMembers, function(a, b)
+            return a.sortIndex < b.sortIndex
+        end)
+        table.sort(petMembers, function(a, b)
+            return a.sortIndex < b.sortIndex
+        end)
+        for _, member in ipairs(petMembers) do
+            tinsert(members, member)
+        end
+        for _, row in ipairs(rows) do
+            wipe(row.missing)
+            wipe(row.used)
+            wipe(row.unknown)
+            row.has = nil
+            row.total = nil
+            if IsMonitorRowEnabled(row) then
+                local buffInfo = row.buffInfo
+                row.isActive = nil
+                if buffInfo.countMode == "burstPotion" and not burstPotionActive then
+                    local total = #burstPotionMembers
+                    row.has = 0
+                    row.total = total
+                    row.count:SetText("0/" .. total)
+                    row.bar:SetMinMaxValues(0, max(1, total))
+                    row.bar:SetValue(0)
+                    row.bar:SetStatusBarColor(.35, .35, .35, .6)
+                    row.count:SetTextColor(.5, .5, .5)
+                else
+                    row.isActive = true
+                    local has, total = 0, 0
+                    if buffInfo.countMode == "burstPotion" then
+                        for _, member in ipairs(burstPotionMembers) do
+                            total = total + 1
+                            local potions = burstPotionUsed[member.guid]
+                            if potions then
+                                has = has + 1
+                                tinsert(row.used, {
+                                    name = member.name,
+                                    point = member.point,
+                                    class = member.class,
+                                    potions = potions,
+                                })
+                            else
+                                tinsert(row.missing, {
+                                    name = member.name,
+                                    point = member.point,
+                                    class = member.class,
+                                })
                             end
-                        else
-                            for _, member in ipairs(members) do
-                                local rosterInfo = member.rosterInfo
-                                if member.isPet and not buffInfo.monitorPet then
-                                    -- 宠物只参与力量、王者、耐力和爪子监控。
-                                elseif buffInfo.countMode == "casterClass" then
-                                    if rosterInfo and rosterInfo.class == buffInfo.casterClass then
-                                        total = total + 1
-                                        if member.guid and focusMagicCasters[member.guid] then
-                                            has = has + 1
-                                        else
-                                            tinsert(row.missing, {
-                                                name = member.name,
-                                                point = member.point,
-                                                class = member.class,
-                                            })
-                                        end
-                                    end
-                                elseif buffInfo.countMode == "personalBuff" then
-                                    local rule = GetPersonalBuffRule(rosterInfo)
-                                    if rule then
-                                        total = total + 1
-                                        if GetAuraState(member.auraState, rule) then
-                                            has = has + 1
-                                        else
-                                            tinsert(row.missing, {
-                                                name = member.name,
-                                                point = member.point,
-                                                expected = GetPersonalBuffText(rule),
-                                                class = member.class,
-                                            })
-                                        end
-                                    end
-                                elseif ShouldCountMember(buffInfo, rosterInfo) then
+                        end
+                    else
+                        for _, member in ipairs(members) do
+                            local rosterInfo = member.rosterInfo
+                            if member.isPet and not buffInfo.monitorPet then
+                                -- 宠物只参与力量、王者、耐力和爪子监控。
+                            elseif buffInfo.countMode == "casterClass" then
+                                if rosterInfo and rosterInfo.class == buffInfo.casterClass then
                                     total = total + 1
-                                    if GetAuraState(member.auraState, buffInfo) then
+                                    if member.guid and focusMagicCasters[member.guid] then
                                         has = has + 1
                                     else
                                         tinsert(row.missing, {
-                                            name = member.displayName or member.name,
+                                            name = member.name,
                                             point = member.point,
                                             class = member.class,
                                         })
                                     end
                                 end
+                            elseif buffInfo.countMode == "personalBuff" then
+                                local rule = GetPersonalBuffRule(rosterInfo)
+                                if rule then
+                                    total = total + 1
+                                    if GetAuraState(member.auraState, rule) then
+                                        has = has + 1
+                                    else
+                                        tinsert(row.missing, {
+                                            name = member.name,
+                                            point = member.point,
+                                            expected = GetPersonalBuffText(rule),
+                                            class = member.class,
+                                        })
+                                    end
+                                end
+                            elseif ShouldCountMember(buffInfo, rosterInfo) then
+                                total = total + 1
+                                if GetAuraState(member.auraState, buffInfo) then
+                                    has = has + 1
+                                else
+                                    tinsert(row.missing, {
+                                        name = member.displayName or member.name,
+                                        point = member.point,
+                                        class = member.class,
+                                    })
+                                end
                             end
                         end
-                        row.has = has
-                        row.total = total
-                        row.count:SetText(has .. "/" .. total)
-                        if total == 0 then
-                            row.bar:SetMinMaxValues(0, 1)
-                            row.bar:SetValue(0)
-                            row.bar:SetStatusBarColor(.35, .35, .35, .6)
-                            row.count:SetTextColor(.5, .5, .5)
-                        elseif has >= total then
-                            row.bar:SetMinMaxValues(0, 1)
-                            row.bar:SetValue(1)
-                            row.bar:SetStatusBarColor(0, 1, 0, .6)
-                            row.count:SetTextColor(1, 1, 1)
-                        else
-                            row.bar:SetMinMaxValues(0, total)
-                            row.bar:SetValue(has)
-                            row.bar:SetStatusBarColor(1, 1, 0, .6)
-                            row.count:SetTextColor(1, 1, 1)
-                        end
+                    end
+                    row.has = has
+                    row.total = total
+                    row.count:SetText(has .. "/" .. total)
+                    if total == 0 then
+                        row.bar:SetMinMaxValues(0, 1)
+                        row.bar:SetValue(0)
+                        row.bar:SetStatusBarColor(.35, .35, .35, .6)
+                        row.count:SetTextColor(.5, .5, .5)
+                    elseif has >= total then
+                        row.bar:SetMinMaxValues(0, 1)
+                        row.bar:SetValue(1)
+                        row.bar:SetStatusBarColor(0, 1, 0, .6)
+                        row.count:SetTextColor(1, 1, 1)
+                    else
+                        row.bar:SetMinMaxValues(0, total)
+                        row.bar:SetValue(has)
+                        row.bar:SetStatusBarColor(1, 1, 0, .6)
+                        row.count:SetTextColor(1, 1, 1)
                     end
                 end
             end
         end
-
-        function TJ.SetBuffMonitorShown(shown)
-            monitorSaved.show = shown and 1 or 0
-            if TJ.BuffMonitorToggleButton then
-                TJ.BuffMonitorToggleButton:Update()
-            end
-            UpdateMonitor()
-        end
-
-        local function CancelBurstPotionMonitorReset()
-            burstPotionResetGeneration = burstPotionResetGeneration + 1
-            burstPotionResetPending = nil
-        end
-
-        local function ClearBurstPotionMonitor()
-            wipe(burstPotionUsed)
-            burstPotionActive = nil
-            UpdateMonitor()
-        end
-
-        function TJ.StartBurstPotionMonitor()
-            if burstPotionResetPending then
-                CancelBurstPotionMonitorReset()
-                wipe(burstPotionUsed)
-            end
-            burstPotionActive = true
-            UpdateMonitor()
-        end
-
-        function TJ.ResetBurstPotionMonitor()
-            CancelBurstPotionMonitorReset()
-            ClearBurstPotionMonitor()
-        end
-
-        function TJ.ScheduleBurstPotionMonitorReset()
-            burstPotionResetGeneration = burstPotionResetGeneration + 1
-            local generation = burstPotionResetGeneration
-            burstPotionResetPending = true
-            After(BURST_POTION_RESET_DELAY, function()
-                if not burstPotionResetPending or burstPotionResetGeneration ~= generation then return end
-                burstPotionResetPending = nil
-                ClearBurstPotionMonitor()
-            end)
-        end
-
-        TJ.RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", function(self, event, ...)
-            if not IsInRaid(1) then return end
-            local _, subevent, _, _, _, _, _, destGUID, _, _, _, spellID = ...
-            if (subevent ~= "SPELL_AURA_APPLIED" and subevent ~= "SPELL_AURA_REFRESH") or
-                not burstPotionInfo.auraID[spellID] or not TJ.raidRosterGUID[destGUID] then
-                return
-            end
-            if burstPotionResetPending then
-                CancelBurstPotionMonitorReset()
-                wipe(burstPotionUsed)
-            end
-            burstPotionUsed[destGUID] = burstPotionUsed[destGUID] or {}
-            local potions = burstPotionUsed[destGUID]
-            potions[spellID] = (potions[spellID] or 0) + 1
-            burstPotionActive = true
-            UpdateMonitor()
-        end)
-
-        UpdateMonitor()
-        C_Timer.NewTicker(1, UpdateMonitor)
     end
+
+    function TJ.SetBuffMonitorShown(shown)
+        monitorSaved.show = shown and 1 or 0
+        if TJ.BuffMonitorToggleButton then
+            TJ.BuffMonitorToggleButton:Update()
+        end
+        UpdateMonitor()
+    end
+
+    local function CancelBurstPotionMonitorReset()
+        burstPotionResetGeneration = burstPotionResetGeneration + 1
+        burstPotionResetPending = nil
+    end
+
+    local function ClearBurstPotionMonitor()
+        wipe(burstPotionUsed)
+        burstPotionActive = nil
+        UpdateMonitor()
+    end
+
+    function TJ.StartBurstPotionMonitor()
+        if burstPotionResetPending then
+            CancelBurstPotionMonitorReset()
+            wipe(burstPotionUsed)
+        end
+        burstPotionActive = true
+        UpdateMonitor()
+    end
+
+    function TJ.ResetBurstPotionMonitor()
+        CancelBurstPotionMonitorReset()
+        ClearBurstPotionMonitor()
+    end
+
+    function TJ.ScheduleBurstPotionMonitorReset()
+        burstPotionResetGeneration = burstPotionResetGeneration + 1
+        local generation = burstPotionResetGeneration
+        burstPotionResetPending = true
+        After(BURST_POTION_RESET_DELAY, function()
+            if not burstPotionResetPending or burstPotionResetGeneration ~= generation then return end
+            burstPotionResetPending = nil
+            ClearBurstPotionMonitor()
+        end)
+    end
+
+    TJ.RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", function(self, event, ...)
+        if not IsInRaid(1) then return end
+        local _, subevent, _, _, _, _, _, destGUID, _, _, _, spellID = ...
+        if (subevent ~= "SPELL_AURA_APPLIED" and subevent ~= "SPELL_AURA_REFRESH") or
+            not burstPotionInfo.auraID[spellID] or not TJ.raidRosterGUID[destGUID] then
+            return
+        end
+        if burstPotionResetPending then
+            CancelBurstPotionMonitorReset()
+            wipe(burstPotionUsed)
+        end
+        burstPotionUsed[destGUID] = burstPotionUsed[destGUID] or {}
+        local potions = burstPotionUsed[destGUID]
+        potions[spellID] = (potions[spellID] or 0) + 1
+        burstPotionActive = true
+        UpdateMonitor()
+    end)
+
+    UpdateMonitor()
+    C_Timer.NewTicker(1, UpdateMonitor)
 end)
---[[
-C_ChatInfo.SendAddonMessage("PLPWR", "PASSIGN 苍骑士@2211111111", "RAID")
- ]]

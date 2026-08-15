@@ -176,7 +176,7 @@ function TJ.CreateMap(FB, bossIndex, iconTbl, width, height,
         local tex = map:CreateTexture()
         tex:SetPoint("TOPLEFT", 1, -1)
         tex:SetPoint("BOTTOMRIGHT", -1, 1)
-        tex:SetTexture(format("Interface\\AddOns\\TuanJian\\Media\\icon\\%s\\m%s.png", FB, (mapBossIndex or bossIndex) .. (childIndex or "")))
+        tex:SetTexture(format("Interface\\AddOns\\TuanJianPlus\\Media\\icon\\%s\\m%s.png", FB, (mapBossIndex or bossIndex) .. (childIndex or "")))
 
         map:SetScript("OnMouseDown", function(self)
             if TJ.lastfocus then
@@ -580,7 +580,7 @@ function TJ.CreateMapIcon(FB, bossIndex, index, v, width,
 
         local broder = f:CreateTexture()
         broder:SetAllPoints()
-        broder:SetTexture([[Interface\AddOns\TuanJian\Media\icon\broder.png]])
+        broder:SetTexture([[Interface\AddOns\TuanJianPlus\Media\icon\broder.png]])
         f.broder = broder
 
         if v.notMask then
@@ -608,7 +608,7 @@ function TJ.CreateMapIcon(FB, bossIndex, index, v, width,
                 end
                 f.icon:SetTexture(v.isNPC_icon)
             else
-                f.icon:SetTexture(format("Interface\\AddOns\\TuanJian\\Media\\icon\\%s\\%s.png", FB, v.isNPC))
+                f.icon:SetTexture(format("Interface\\AddOns\\TuanJianPlus\\Media\\icon\\%s\\%s.png", FB, v.isNPC))
                 f.isBoss = true
             end
             f.numText:SetText(v.index or v.isNPC_text or nil)

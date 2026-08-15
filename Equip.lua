@@ -1072,7 +1072,7 @@ TJ.Init(function()
             if TJ.autoButton then
                 TJ.autoButton:SetEnabled(true)
             end
-            PlaySoundFile("Interface\\AddOns\\TuanJian\\Media\\sound\\other\\done.mp3", "Master")
+            PlaySoundFile("Interface\\AddOns\\TuanJianPlus\\Media\\sound\\other\\done.mp3", "Master")
         end
 
         local function GetTeamRosterIDs(teamIndex)
