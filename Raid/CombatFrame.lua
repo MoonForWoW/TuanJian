@@ -258,7 +258,7 @@ local function CreateMoneyFrame(parent, button)
         t:SetWidth(60)
         t:SetJustifyH("RIGHT")
 
-        local edit = CreateFrame("EditBox", nil, f, "TuanJian_InputBoxTemplate")
+        local edit = CreateFrame("EditBox", nil, f, TJ.editTemplate)
         edit:SetSize(f:GetWidth() - t:GetWidth() - 30, 20)
         edit:SetPoint("LEFT", t, "RIGHT", 5, 0)
         edit:SetText(parent:GetParent().titleName ..
@@ -282,7 +282,7 @@ local function CreateMoneyFrame(parent, button)
         t:SetWidth(60)
         t:SetJustifyH("RIGHT")
 
-        local edit = CreateFrame("EditBox", nil, f, "TuanJian_InputBoxTemplate")
+        local edit = CreateFrame("EditBox", nil, f, TJ.editTemplate)
         edit:SetSize(f:GetWidth() - t:GetWidth() - 30, 20)
         edit:SetPoint("LEFT", t, "RIGHT", 5, 0)
         edit:SetNumeric(true)

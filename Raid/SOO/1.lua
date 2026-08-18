@@ -199,9 +199,78 @@ TJ.Load[FB .. bossIndex] = function()
 
     TJ.CreateSPTitle(FB, bossIndex, nil, nil)
 
+    -- 腐蚀冲击
+    do
+        local info = {
+            aura = {
+                type = "d",
+                spell = {
+                    {
+                        spellID = { 143436 },
+                        colorNum = 1,
+                    },
+                },
+                destNpcType = { "Player" },
+                showCount = true,
+            },
+        }
+        local f = TJ.CreateTitle(FB, bossIndex, nil, 236302, L["腐蚀冲击"],
+            nil, nil, nil, info)
+        TJ.AddSPTitle(FB, bossIndex, f)
+    end
 
+    -- 漩涡伤害
+    do
+        local info = {
+            beDamage = {
+                type = "d",
+                spell = {
+                    {
+                        spellID = { 143412 },
+                        colorNum = 1,
+                    },
+                },
+                destNpcType = { "Player" },
+                showCount = true,
+            },
+            canSend = "count",
+        }
+        local f = TJ.CreateTitle(FB, bossIndex, nil, 651082, L["漩涡承伤"],
+            nil, nil, nil, info)
+        TJ.AddSPTitle(FB, bossIndex, f)
+    end
 
+    -- P2转火小怪
+    do
+        local info = {
+            dps = {
+                type = "s",
+                destNPCID = {
+                    71603, -- 煞之水滴
+                },
+            },
+            showRaidMember = true,
+            canSend = "dps",
+        }
+        local f = TJ.CreateTitle(FB, bossIndex, nil, 252178, L["转火黑软"],
+            nil, nil, nil, info)
+        TJ.AddSPTitle(FB, bossIndex, f)
+    end
 
+    -- P2治疗小怪
+    do
+        local info = {
+            hps = {
+                type = "s",
+                destNPCID = {
+                    71604, -- 污染之水滴
+                },
+            },
+        }
+        local f = TJ.CreateTitle(FB, bossIndex, nil, 136007, L["治疗白软"],
+            nil, nil, nil, info)
+        TJ.AddSPTitle(FB, bossIndex, f)
+    end
 
     -- mainFrame.BOSS_SAY = function(msg)
     --     if msg:match("") then

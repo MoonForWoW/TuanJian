@@ -609,7 +609,8 @@ function TJ.CombatFrameAddText(self)
         local text = format("|cff808080（%s）|r", TJ.SecondsToTime(self.v.endTime))
         local stackCountText=''
         if self.v.stackCount then
-            stackCountText = L['|cffFFD100（%s点法强）|r']:format(self.v.stackCount)
+            -- stackCountText = L['|cffFFD100（%s点法强）|r']:format(self.v.stackCount)
+            stackCountText = L['|cffFFD100%s点|r']:format(self.v.stackCount)
         end
         GameTooltip:AddLine(self.tooltipText .. text, 1, 1, 1)
         GameTooltip:AddLine(sourceRT .. TJ.GetIconFormName(sourceName) .. stackCountText, sr, sg, sb)

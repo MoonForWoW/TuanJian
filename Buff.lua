@@ -39,13 +39,13 @@ if TJ.IsWLK then
     }
 elseif TJ.IsMOP then
     buffTbl = {
-        { key = "stats", id = { [1126] = true, [115921] = true, [90363] = true, [20217] = true, [117666] = true, [117667] = true }, displayID = 1126, class = { "DRUID", "PALADIN", "MONK", "HUNTER" }, tipKey = L["全属性"], monitor = true, monitorPet = true, providers = { { class = "DRUID" }, { class = "PALADIN" }, { class = "MONK" }, { class = "HUNTER", talents = { 1 } } }, },
-        { key = "spell_power", id = { [1459] = true, [126309] = true, [77747] = true, [109773] = true, [61316] = true }, displayID = 1459, class = { "MAGE", "WARLOCK", "SHAMAN", "HUNTER" }, tipKey = L["法术强度"], shortName = L["法强"], monitor = true, monitorPet = true, providers = { { class = "MAGE" }, { class = "WARLOCK" }, { class = "SHAMAN" }, { class = "HUNTER", talents = { 1 } } }, },
-        { key = "attack_power", id = { [57330] = true, [19506] = true, [6673] = true }, displayID = 57330, class = { "DEATHKNIGHT", "HUNTER", "WARRIOR" }, tipKey = L["攻击强度"], shortName = L["攻强"], monitor = true, monitorPet = true, providers = { { class = "DEATHKNIGHT" }, { class = "HUNTER" }, { class = "WARRIOR" } }, },
-        { key = "critical_strike", id = { [17007] = true, [90309] = true, [126309] = true, [24604] = true, [1459] = true, [116781] = true, [24932] = true, [61316] = true, [24597] = true }, displayID = 116781, class = { "DRUID", "HUNTER", "MAGE", "MONK" }, tipKey = L["暴击"], monitor = true, monitorPet = true, providers = { { class = "DRUID", talents = { 2, 3 } }, { class = "HUNTER" }, { class = "MAGE" }, { class = "MONK", talents = { 3 } } }, },
-        { key = "mastery", id = { [93435] = true, [128997] = true, [19740] = true, [116956] = true, [127830] = true }, displayID = 19740, class = { "PALADIN", "SHAMAN", "HUNTER" }, tipKey = L["精通"], monitor = true, monitorPet = true, providers = { { class = "PALADIN" }, { class = "SHAMAN" }, { class = "HUNTER" } }, },
-        { key = "stamina", id = { [90364] = true, [21562] = true, [109773] = true, [469] = true }, displayID = 21562, class = { "PRIEST", "WARRIOR", "WARLOCK", "HUNTER" }, tipKey = L["耐力"], monitor = true, monitorPet = true, providers = { { class = "PRIEST" }, { class = "WARRIOR" }, { class = "WARLOCK" }, { class = "HUNTER", talents = { 1 } } }, },
-        { key = "food", id = { [87226] = true }, displayID = 87226, auraName = L["进食充分"], class = nil, isItem = true, tipKey = L["大餐"], shortName = L["食物"], monitor = true, noBroadcast = true, noWhisper = true, whisperMissing = true, },
+        { key = "stamina", id = { [90364] = true, [21562] = true, [109773] = true, [469] = true }, displayID = 21562, class = { "PRIEST", "WARRIOR", "WARLOCK", "HUNTER" }, tipKey = L["耐力"], monitor = true, providers = { { class = "PRIEST" }, { class = "WARRIOR" }, { class = "WARLOCK" }, { class = "HUNTER", talents = { 1 } } }, },
+        { key = "stats", id = { [1126] = true, [115921] = true, [90363] = true, [20217] = true, [117666] = true, [117667] = true }, displayID = 1126, class = { "DRUID", "PALADIN", "MONK", "HUNTER" }, tipKey = L["属性"], monitor = true, providers = { { class = "DRUID" }, { class = "PALADIN" }, { class = "MONK" }, { class = "HUNTER", talents = { 1 } } }, },
+        { key = "mastery", id = { [93435] = true, [128997] = true, [19740] = true, [116956] = true, [127830] = true }, displayID = 19740, class = { "PALADIN", "SHAMAN", "HUNTER" }, tipKey = L["精通"], monitor = true, providers = { { class = "PALADIN" }, { class = "SHAMAN" }, { class = "HUNTER" } }, },
+        { key = "critical_strike", id = { [17007] = true, [90309] = true, [126309] = true, [24604] = true, [1459] = true, [116781] = true, [24932] = true, [61316] = true, [24597] = true }, displayID = 116781, class = { "DRUID", "HUNTER", "MAGE", "MONK" }, tipKey = L["暴击"], monitor = true, providers = { { class = "DRUID", talents = { 2, 3 } }, { class = "HUNTER" }, { class = "MAGE" }, { class = "MONK", talents = { 3 } } }, },
+        { key = "attack_power", id = { [57330] = true, [19506] = true, [6673] = true }, displayID = 57330, class = { "DEATHKNIGHT", "HUNTER", "WARRIOR" }, tipKey = L["攻击强度"], shortName = L["攻强"], monitor = true, monitorFilter = "physical", providers = { { class = "DEATHKNIGHT" }, { class = "HUNTER" }, { class = "WARRIOR" } }, },
+        { key = "spell_power", id = { [1459] = true, [126309] = true, [77747] = true, [109773] = true, [61316] = true }, displayID = 1459, class = { "MAGE", "WARLOCK", "SHAMAN", "HUNTER" }, tipKey = L["法术强度"], shortName = L["法强"], monitor = true, monitorFilter = "caster", providers = { { class = "MAGE" }, { class = "WARLOCK" }, { class = "SHAMAN" }, { class = "HUNTER", talents = { 1 } } }, },
+        { key = "food", id = { [87226] = true }, displayID = 87226, monitorDisplayID = 104273, auraName = L["进食充分"], class = nil, isItem = true, tipKey = L["大餐"], shortName = L["食物"], monitor = true, noBroadcast = true, noWhisper = true, whisperMissing = true, },
     }
 end
 
@@ -97,9 +97,10 @@ TJ.Init(function()
     end
     TJ.Buff = {}
 
+    TJ.CreateBuffMonitorToggleButton()
+    if not TJ.IsWLK then return end
     C_ChatInfo.RegisterAddonMessagePrefix("PLPWR")
 
-    TJ.CreateBuffMonitorToggleButton()
 
     do
         local t = TJ.buffMainFrame:CreateFontString()
@@ -204,7 +205,7 @@ TJ.Init(function()
 
     local function CreateEdit()
         local i = #TJ.Buff
-        local edit = CreateFrame("EditBox", nil, TJ.Buff[i].title, "TuanJian_InputBoxTemplate")
+        local edit = CreateFrame("EditBox", nil, TJ.Buff[i].title, TJ.editTemplate)
         edit:SetSize(130, 20)
         edit:SetAutoFocus(false)
         edit:SetPoint("LEFT", TJ.Buff[i].title, "RIGHT", 15, 0)
@@ -698,7 +699,22 @@ TJ.Init(function()
     local IsMonitorRowEnabled
     local StartMonitorMoving, StopMonitorMoving
     local title, broadcastButton, monitorFrame
-    local flaskInfo = {
+    local flaskInfo = TJ.IsMOP and {
+        auraID = {
+            [105694] = true, -- 冬噬合剂
+            [105693] = true, -- 秋叶合剂
+            [105691] = true, -- 暖阳合剂
+            [105689] = true, -- 春华合剂
+            [105696] = true, -- 大地合剂
+        },
+        monitorDisplayID = 105694,
+        monitorKey = "flask",
+        shortName = L["合剂"],
+        monitor = true,
+        noBroadcast = true,
+        noWhisper = true,
+        whisperMissing = true,
+    } or {
         auraID = {
             [53755] = true, -- 冰霜巨龙合剂
             [53758] = true, -- 石血合剂
@@ -717,7 +733,23 @@ TJ.Init(function()
         noWhisper = true,
         whisperMissing = true,
     }
-    local burstPotionInfo = {
+    local burstPotionInfo = TJ.IsMOP and {
+        auraID = {
+            [105702] = true, -- 青龙药水
+            [105697] = true, -- 兔妖之啮
+            [105706] = true, -- 魔古之力药水
+            [105698] = true, -- 群山药水
+        },
+        monitorDisplayID = 105702,
+        monitorKey = "burst_potion",
+        shortName = L["吃药"],
+        monitor = true,
+        noBroadcast = true,
+        noWhisper = true,
+        countMode = "burstPotion",
+        missingTitle = L["未使用："],
+        inactiveText = L["等待下一轮首领战"],
+    } or {
         auraID = {
             [28714] = true,   -- 烈焰菇
             [53908] = true,   -- 速度药水
@@ -749,7 +781,7 @@ TJ.Init(function()
         missingTitle = L["未使用："],
     }
     local personalBuffInfo = {
-        monitorDisplayID = 25780,
+        monitorDisplayID = TJ.IsMOP and 30482 or 25780,
         monitorKey = "personal_buff",
         shortName = L["常驻"],
         monitor = true,
@@ -759,7 +791,7 @@ TJ.Init(function()
         countMode = "personalBuff",
         ignoreExpiration = true,
     }
-    local personalBuffRules = {
+    local wlkPersonalBuffRules = {
         MAGE = {
             id = { [43046] = true, [43045] = true, [30482] = true },
             displayID = 43046, -- 熔岩护甲
@@ -781,6 +813,34 @@ TJ.Init(function()
             ignoreExpiration = true,
         },
     }
+    local mopShamanLightningShieldRule = {
+        id = { [324] = true }, -- 闪电之盾
+        displayID = 324,
+        ignoreExpiration = true,
+    }
+    local mopShamanWaterShieldRule = {
+        id = { [52127] = true }, -- 水之护盾
+        displayID = 52127,
+        ignoreExpiration = true,
+    }
+    local mopPersonalBuffRules = {
+        MAGE = {
+            id = { [6117] = true, [7302] = true, [30482] = true }, -- 法师、冰霜、熔岩护甲
+            displayID = 30482,
+            ignoreExpiration = true,
+        },
+        HUNTER = {
+            id = { [13165] = true, [109260] = true, [5118] = true, [13159] = true }, -- 雄鹰、铁鹰、猎豹、豹群守护
+            displayID = 13165,
+            ignoreExpiration = true,
+        },
+        PRIEST = {
+            id = { [588] = true, [73413] = true }, -- 心灵之火、心灵意志
+            displayID = 588,
+            ignoreExpiration = true,
+        },
+    }
+    local personalBuffRules = TJ.IsMOP and mopPersonalBuffRules or wlkPersonalBuffRules
     local paladinPersonalBuffRule = {
         id = { [25780] = true },
         displayID = 25780, -- 正义之怒
@@ -788,7 +848,7 @@ TJ.Init(function()
     }
     local deathKnightPersonalBuffRule = {
         id = { [48263] = true },
-        displayID = 48263, -- 冰霜灵气
+        displayID = 48263, -- WLK冰霜灵气/MOP鲜血灵气
         ignoreExpiration = true,
     }
     OpenMonitorMenu = function(anchor)
@@ -810,8 +870,8 @@ TJ.Init(function()
                                 enabledCount = enabledCount + 1
                             end
                         end
-                        if enabledCount <= 5 then
-                            UIErrorsFrame:AddMessage(L["至少需要保留5种BUFF监控"], 1, 0, 0)
+                        if enabledCount <= 4 then
+                            UIErrorsFrame:AddMessage(L["至少需要保留4种BUFF监控"], 1, 0, 0)
                             button.checked = true
                             _G[button:GetName() .. "Check"]:Show()
                             _G[button:GetName() .. "UnCheck"]:Hide()
@@ -962,6 +1022,14 @@ TJ.Init(function()
                 end,
             }
         }
+        if TJ.IsMOP then
+            for i, info in ipairs(menu) do
+                if info.text == L["监控宠物"] then
+                    tremove(menu, i)
+                    break
+                end
+            end
+        end
         LibBG:EasyMenu(menu, TJ.dropDown, "cursor", 0, 0, "MENU", 2)
     end
 
@@ -1031,8 +1099,8 @@ TJ.Init(function()
         title:SetJustifyH("LEFT")
 
         -- 批量密语
-        broadcastButton = CreateFrame("Button", nil, monitorFrame)
-        do
+        if TJ.IsWLK then
+            broadcastButton = CreateFrame("Button", nil, monitorFrame)
             broadcastButton:SetSize(20, 20)
             broadcastButton:SetPoint("TOPRIGHT", monitorFrame, "TOPRIGHT", -3, -2)
             broadcastButton:SetNormalTexture("Interface\\Common\\VoiceChat-Speaker")
@@ -1172,7 +1240,8 @@ TJ.Init(function()
         end)
     end
 
-    local burstPotionOrder = { 28714, 53908, 53909, 53762, 1282971 }
+    local burstPotionOrder = TJ.IsMOP and { 105702, 105697, 105706, 105707, 105698 } or
+        { 28714, 53908, 53909, 53762, 1282971 }
     local function GetMonitorMemberRGB(member)
         if member.class then
             return GetClassColor(member.class)
@@ -1266,7 +1335,7 @@ TJ.Init(function()
                 else
                     GameTooltip:AddLine(format(L["缺少%s的人数太多，无法密语。"], self.name), 1, .2, .2, true)
                 end
-            elseif not self.buffInfo.noWhisper then
+            elseif TJ.IsWLK and not self.buffInfo.noWhisper then
                 local responsibility, responsibilityUnit = GetResponsibilityUnit(self.buffIndex)
                 if responsibility then
                     GameTooltip:AddLine(' ')
@@ -1319,7 +1388,7 @@ TJ.Init(function()
         row.icon:SetPoint("LEFT", 1, 0)
         row.icon:SetTexCoord(unpack(TJ.iconTexCoord))
         local displayID = buffInfo.monitorDisplayID or buffInfo.displayID
-        if buffInfo.auraID or not buffInfo.isItem then
+        if buffInfo.monitorDisplayID or buffInfo.auraID or not buffInfo.isItem then
             row.icon:SetTexture(C_Spell.GetSpellTexture(displayID))
         else
             row.icon:SetTexture(select(5, GetItemInfoInstant(displayID)))
@@ -1367,7 +1436,7 @@ TJ.Init(function()
                 if TJ.IsLeader() then
                     if self.buffInfo.whisperMissing then
                         SendMissingPlayersWhisper(self)
-                    elseif not self.buffInfo.noWhisper then
+                    elseif TJ.IsWLK and not self.buffInfo.noWhisper then
                         SendMissingWhisper(self)
                     end
                 end
@@ -1392,7 +1461,9 @@ TJ.Init(function()
 
     UpdateMonitorLayout = function()
         title:ClearAllPoints()
-        broadcastButton:ClearAllPoints()
+        if broadcastButton then
+            broadcastButton:ClearAllPoints()
+        end
         local visibleRows = {}
         for _, row in ipairs(rows) do
             if IsMonitorRowEnabled(row) then
@@ -1404,7 +1475,13 @@ TJ.Init(function()
         end
         if monitorSaved.layout == 3 then
             title:SetPoint("LEFT", monitorFrame, "LEFT", 7, 0)
-            broadcastButton:SetPoint("LEFT", title, "RIGHT", 3, 0)
+            local firstAnchor = title
+            local broadcastWidth = 0
+            if broadcastButton then
+                broadcastButton:SetPoint("LEFT", title, "RIGHT", 3, 0)
+                firstAnchor = broadcastButton
+                broadcastWidth = 3 + broadcastButton:GetWidth()
+            end
             local rowWidth = 100
             local rowGap = 2
             local previousRow
@@ -1413,20 +1490,22 @@ TJ.Init(function()
                 if previousRow then
                     row:SetPoint("LEFT", previousRow, "RIGHT", rowGap, 0)
                 else
-                    row:SetPoint("LEFT", broadcastButton, "RIGHT", 3, 0)
+                    row:SetPoint("LEFT", firstAnchor, "RIGHT", 3, 0)
                 end
                 row:SetWidth(rowWidth)
                 previousRow = row
             end
             local titleWidth = max(55, title:GetWidth())
-            local frameWidth = 5 + titleWidth + 3 + broadcastButton:GetWidth() + 3 +
+            local frameWidth = 5 + titleWidth + broadcastWidth + 3 +
                 #visibleRows * rowWidth + max(0, #visibleRows - 1) * rowGap + 5
             monitorFrame:SetSize(frameWidth, 24)
             return
         end
 
         title:SetPoint("TOPLEFT", monitorFrame, "TOPLEFT", 7, -5)
-        broadcastButton:SetPoint("TOPRIGHT", monitorFrame, "TOPRIGHT", -3, -2)
+        if broadcastButton then
+            broadcastButton:SetPoint("TOPRIGHT", monitorFrame, "TOPRIGHT", -3, -2)
+        end
         local columns = monitorSaved.layout == 2 and 2 or 1
         local frameWidth = columns == 2 and 240 or 150
         local columnGap = 2
@@ -1453,7 +1532,12 @@ TJ.Init(function()
         WARLOCK = true,
         DRUID = true,
     }
-    local petClassByOwnerClass = {
+    local petClassByOwnerClass = TJ.IsMOP and {
+        DEATHKNIGHT = "DEATHKNIGHT",
+        HUNTER = "HUNTER",
+        MAGE = "MAGE",
+        WARLOCK = "WARLOCK",
+    } or {
         DEATHKNIGHT = "ROGUE",
         HUNTER = "WARRIOR",
         WARLOCK = "PALADIN",
@@ -1508,6 +1592,10 @@ TJ.Init(function()
     for _, rule in pairs(personalBuffRules) do
         RegisterAuraInfo(rule)
     end
+    if TJ.IsMOP then
+        RegisterAuraInfo(mopShamanLightningShieldRule)
+        RegisterAuraInfo(mopShamanWaterShieldRule)
+    end
     RegisterAuraInfo(paladinPersonalBuffRule)
     RegisterAuraInfo(deathKnightPersonalBuffRule)
 
@@ -1557,8 +1645,28 @@ TJ.Init(function()
             return TJ.Istank(rosterInfo) and paladinPersonalBuffRule or nil
         elseif rosterInfo.class == "DEATHKNIGHT" then
             return TJ.Istank(rosterInfo) and deathKnightPersonalBuffRule or nil
+        elseif TJ.IsMOP and rosterInfo.class == "SHAMAN" then
+            local talent = rosterInfo.talent or TuanJian.talentInfo[rosterInfo.name]
+            if talent == 1 or talent == 2 then
+                return mopShamanLightningShieldRule
+            elseif talent == 3 then
+                return mopShamanWaterShieldRule
+            end
+            return
         end
-        return personalBuffRules[rosterInfo.class]
+        local rule = personalBuffRules[rosterInfo.class]
+        if rule and rule.talents then
+            local talent = rosterInfo.talent or TuanJian.talentInfo[rosterInfo.name]
+            local matched
+            for _, expectedTalent in ipairs(rule.talents) do
+                if talent == expectedTalent then
+                    matched = true
+                    break
+                end
+            end
+            if not matched then return end
+        end
+        return rule
     end
 
     local function GetPersonalBuffText(rule)
@@ -1630,9 +1738,9 @@ TJ.Init(function()
                 })
                 local petClass = rosterInfo and petClassByOwnerClass[rosterInfo.class]
                 local petUnit = "raidpet" .. raidIndex
-                local isValidPet = monitorSaved.monitorPet == 1 and petClass and UnitExists(petUnit) and
+                local isValidPet = TJ.IsWLK and monitorSaved.monitorPet == 1 and petClass and UnitExists(petUnit) and
                     not UnitIsDeadOrGhost(petUnit)
-                if isValidPet and rosterInfo.class == "WARLOCK" then
+                if isValidPet and TJ.IsWLK and rosterInfo.class == "WARLOCK" then
                     isValidPet = TJ.GetNPCID(UnitGUID(petUnit)) == FELGUARD_NPC_ID
                 end
                 if isValidPet then
@@ -1826,17 +1934,22 @@ TJ.Init(function()
 
     TJ.RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", function(self, event, ...)
         if not IsInRaid(1) then return end
-        local _, subevent, _, _, _, _, _, destGUID, _, _, _, spellID = ...
-        if (subevent ~= "SPELL_AURA_APPLIED" and subevent ~= "SPELL_AURA_REFRESH") or
-            not burstPotionInfo.auraID[spellID] or not TJ.raidRosterGUID[destGUID] then
+        local _, subevent, _, sourceGUID, _, _, _, destGUID, _, _, _, spellID = ...
+        local playerGUID
+        if TJ.IsMOP and subevent == "SPELL_CAST_SUCCESS" then
+            playerGUID = sourceGUID
+        elseif TJ.IsWLK and (subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH") then
+            playerGUID = destGUID
+        end
+        if not playerGUID or not burstPotionInfo.auraID[spellID] or not TJ.raidRosterGUID[playerGUID] then
             return
         end
         if burstPotionResetPending then
             CancelBurstPotionMonitorReset()
             wipe(burstPotionUsed)
         end
-        burstPotionUsed[destGUID] = burstPotionUsed[destGUID] or {}
-        local potions = burstPotionUsed[destGUID]
+        burstPotionUsed[playerGUID] = burstPotionUsed[playerGUID] or {}
+        local potions = burstPotionUsed[playerGUID]
         potions[spellID] = (potions[spellID] or 0) + 1
         burstPotionActive = true
         UpdateMonitor()

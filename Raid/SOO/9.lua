@@ -31,6 +31,7 @@ local bossIndex = 9
 
 TJ.Load[FB .. bossIndex] = function()
     local mainFrame = TJ.frame[FB][bossIndex]
+    mainFrame.showPhase = true
 
     -- 站位图
     do
@@ -236,17 +237,144 @@ TJ.Load[FB .. bossIndex] = function()
 
     TJ.CreateSPTitle(FB, bossIndex, nil, nil)
 
+    -- 致命打击层数
+    do
+        local spellID = 142990
+        local spellName = L["致命打击"]
+        local info = {
+            {
+                aura = {
+                    type = "d",
+                    spell = {
+                        {
+                            spellID = { spellID, },
+                            colorNum = 1,
+                        },
+                    },
+                    destNpcType = { "Player", },
+                    showCount = true,
+                },
+                title = { name = L["%s层数"]:format(spellName), },
+            },
+        }
+        local f = TJ.CreateTitle(FB, bossIndex, nil, C_Spell.GetSpellTexture(spellID), spellName,
+            nil, nil, nil, info)
+        TJ.AddSPTitle(FB, bossIndex, f)
+    end
 
+    local function AddDamageAnalysis(iconSpellID, spellName, damageSpellIDs)
+        local info = {
+            {
+                beDamage = {
+                    type = "d",
+                    spell = {
+                        {
+                            spellID = damageSpellIDs,
+                            colorNum = 1,
+                        },
+                    },
+                    destNpcType = { "Player", },
+                    showCount = true,
+                },
+                canSend = "count",
+                title = {
+                    name = L["受到%s伤害"]:format(spellName),
+                    icon = iconSpellID,
+                },
+            },
+        }
+        local f = TJ.CreateTitle(FB, bossIndex, nil, C_Spell.GetSpellTexture(iconSpellID), spellName,
+            nil, nil, nil, info)
+        TJ.AddSPTitle(FB, bossIndex, f)
+    end
 
+    -- 聚爆能量
+    AddDamageAnalysis(142986, L["聚爆能量"], { 142986, })
 
+    -- 圆弧斩
+    AddDamageAnalysis(142815, L["圆弧斩"], { 142815, })
 
-    -- mainFrame.BOSS_SAY = function(msg)
-    --     if msg:match("") then
-    --         tinsert(TJ.GetNewCombatLog().otherTime, {
-    --             time = TJ.GetDurTime(),
-    --             name = "P2",
-    --         })
-    --         return
-    --     end
-    -- end
+    -- 亚煞极之息
+    AddDamageAnalysis(142816, L["亚煞极之息"], { 142816, })
+
+    -- 散逸能量点名和驱散
+    do
+        local spellID = 142913
+        local spellName = L["散逸能量"]
+        local info = {
+            {
+                aura = {
+                    type = "d",
+                    spell = {
+                        {
+                            spellID = { spellID, },
+                            colorNum = 1,
+                        },
+                    },
+                    destNpcType = { "Player", },
+                    showCount = true,
+                },
+                title = {
+                    name = L["%s点名"]:format(spellName),
+                    icon = spellID,
+                },
+            },
+            {
+                dispel = {
+                    type = "s",
+                    spell = {
+                        {
+                            spellID = { spellID, },
+                            colorNum = 2,
+                        },
+                    },
+                },
+                title = {
+                    name = L["驱散%s"]:format(spellName),
+                    icon = spellID,
+                },
+            },
+        }
+        local f = TJ.CreateTitle(FB, bossIndex, nil, C_Spell.GetSpellTexture(spellID), spellName,
+            nil, nil, nil, info)
+        TJ.AddSPTitle(FB, bossIndex, f)
+    end
+
+    -- 血之怒阶段时间轴
+    do
+        local start
+
+        local function FinishBloodRage()
+            if not start then return end
+            tinsert(TJ.GetNewCombatLog().otherTime, {
+                startTime = start,
+                endTime = TJ.GetDurTime(),
+                name = "br",
+                name2 = L["P2"],
+            })
+            start = nil
+        end
+
+        mainFrame.SPELL_AURA_APPLIED = function(...)
+            local spellID = select(12, ...)
+            if spellID == 142879 and not start then
+                start = TJ.GetDurTime()
+            end
+        end
+
+        mainFrame.SPELL_AURA_REMOVED = function(...)
+            local spellID = select(12, ...)
+            if spellID == 142879 then
+                FinishBloodRage()
+            end
+        end
+
+        mainFrame.ENCOUNTER_START = function()
+            start = nil
+        end
+
+        mainFrame.ENCOUNTER_END = function()
+            FinishBloodRage()
+        end
+    end
 end

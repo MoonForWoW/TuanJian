@@ -45,7 +45,7 @@ TJ.Load[FB .. bossIndex] = function()
             { point = "TOPLEFT", xy = { 421, -474 } },
             { point = "TOPLEFT", xy = { 365, -526 } },
             { point = "TOPLEFT", xy = { 422, -527 } },
-            { point = "TOPLEFT", xy = { 245, -225 } },
+            { point = "TOPLEFT", xy = { 245, -215 } },
             { point = "TOPLEFT", xy = { 211, -258 } },
             { point = "TOPLEFT", xy = { 279, -258 } },
             { point = "TOPLEFT", xy = { 209, -307 } },
@@ -62,7 +62,7 @@ TJ.Load[FB .. bossIndex] = function()
             { point = "TOPLEFT", xy = { 429, -131 } },
 
             --[[
-
+            
 ]]
 
         }

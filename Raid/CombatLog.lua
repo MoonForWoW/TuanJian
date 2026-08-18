@@ -188,7 +188,7 @@ local function SaveRaidAura(FB, bossIndex)
         end
     end
 end
---[[ 
+--[[
 /run TJ.ENCOUNTER_START(nil,nil,729)
 /run TJ.ENCOUNTER_END(nil,nil,729)
 ]]
@@ -768,6 +768,9 @@ do
                 TJ.frame[FB][bossIndex].BOSS_SAY(msg, ...)
             end
         end
+        if msg == L['很好，我会制造一个空间来隔离你们的腐蚀。'] and TJ.IsMOP then
+            TJ.ENCOUNTER_START(nil, nil, 1624, nil, nil, nil, nil, nil)
+        end
     end)
 end
 
@@ -1024,7 +1027,7 @@ do
     -- 分帧处理状态管理（避免全局变量污染，用闭包保存）
     local function createDecompressState(FB, bossIndex, eventTime)
         local sourceData = TJ.GetCombatLog().event -- 源压缩数据
-        local targetTbl = {}                         -- 最终输出的解压结果表（对应原TJ["event"..FB..bossIndex]）
+        local targetTbl = {}                       -- 最终输出的解压结果表（对应原TJ["event"..FB..bossIndex]）
 
         -- 提取所有事件名并转为数组（便于分帧遍历）
         local eventList = {}
@@ -1218,23 +1221,18 @@ do
 
     -- 初始化
     function TJ.DeCompressCombatEvents(FB, bossIndex)
+        -- 先终止实际正在进行的旧任务，避免提前返回时旧任务继续运行
+        local oldState = TJ._decompressState
+        if oldState then
+            TJ.CancelDecompress(oldState.FB, oldState.bossIndex)
+        end
+
         if not TJ.combatLogIndex then return end
         -- 如果已经解压过，则直接返回
         local eventTime = TuanJian.combatLog[TJ.combatLogIndex].time
         if TJ.combatLogEvent[eventTime] then
             return
         end
-        -- 如果该BOSS没有战斗日志，也直接返回
-        local yes
-        for i, v in ipairs(TuanJian.combatLog) do
-            if v.time == eventTime then
-                yes = true
-            end
-        end
-        if not yes then return end
-
-        -- 终止当前BOSS的旧处理任务（如果存在）
-        TJ.CancelDecompress(FB, bossIndex)
 
         -- 创建新的分帧处理状态
         lastFB = FB

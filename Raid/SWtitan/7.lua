@@ -31,7 +31,25 @@ local bossIndex = 1
 
 TJ.Load[FB .. bossIndex] = function()
     local mainFrame = TJ.frame[FB][bossIndex]
---[=[ 
+
+    local instanceID = TJ.FBinfo[FB].ID
+    TJ.autoRaidTargetInfo[instanceID] = TJ.autoRaidTargetInfo[instanceID] or {}
+    local a = { np = true }
+    for i = 1, 7 do
+        a[i] = true
+    end
+    TJ.autoRaidTargetInfo[instanceID][24240] = a                  -- 艾莉森·安蒂勒
+    TJ.autoRaidTargetInfo[instanceID][24241] = a                  -- 索格
+    TJ.autoRaidTargetInfo[instanceID][24242] = a                  -- 滑行者
+    TJ.autoRaidTargetInfo[instanceID][24243] = a                  -- 拉丹领主
+    TJ.autoRaidTargetInfo[instanceID][24244] = a                  -- 加萨克罗斯
+    TJ.autoRaidTargetInfo[instanceID][24245] = a                  -- 沼泽潜伏者
+    TJ.autoRaidTargetInfo[instanceID][24246] = a                  -- 黑暗之心
+    TJ.autoRaidTargetInfo[instanceID][24247] = a                  -- 科拉格
+
+    TJ.autoRaidTargetInfo[instanceID][24239] = { [8] = true, np = true } -- 妖术领主
+
+    --[=[
     -- 站位图
     do
         local tbl = {

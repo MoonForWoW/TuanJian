@@ -614,7 +614,7 @@ function TJ.InitOptions()
 
         local keywordName = "autoInviteKeyword"
         TuanJian.options[keywordName] = TuanJian.options[keywordName] or "123"
-        local edit = CreateFrame("EditBox", nil, f, "TuanJian_InputBoxTemplate")
+        local edit = CreateFrame("EditBox", nil, f, TJ.editTemplate)
         edit:SetSize(100, 25)
         edit:SetPoint("LEFT", f.Text, "RIGHT", 10, 0)
         edit:SetAutoFocus(false)

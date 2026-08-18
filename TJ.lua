@@ -293,7 +293,7 @@ TJ.Init(function()
             local title = parent.all[titleIndex].title
             local edits = parent.all[titleIndex].edits
 
-            local playerEdit = CreateFrame("EditBox", nil, title, "TuanJian_InputBoxTemplate")
+            local playerEdit = CreateFrame("EditBox", nil, title, TJ.editTemplate)
             do
                 playerEdit:SetSize(100, 20)
                 if #edits == 0 then
@@ -386,7 +386,7 @@ TJ.Init(function()
                 end
             end
 
-            local spellEdit = CreateFrame("EditBox", nil, title, "TuanJian_InputBoxTemplate")
+            local spellEdit = CreateFrame("EditBox", nil, title, TJ.editTemplate)
             do
                 spellEdit:SetSize(100, 20)
                 spellEdit:SetPoint("TOPLEFT", playerEdit, "BOTTOMLEFT", 0, -0)

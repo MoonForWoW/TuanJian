@@ -602,7 +602,7 @@ end
 local function CreateButton(f, i)
     local width = 100
     local maxCow = 10
-    local bt = CreateFrame("EditBox", nil, f, "TuanJian_InputBoxTemplate")
+    local bt = CreateFrame("EditBox", nil, f, TJ.editTemplate)
     bt:SetSize(width, 20)
     bt:SetAutoFocus(false)
     if i == 1 then
@@ -709,6 +709,22 @@ local function AddButton(owner, f, i, v, mapIndex)
                         end
                     elseif v.class == "WARRIOR" then
                         highlightSpell = { 97462, 114203 }
+                    end
+                elseif owner.spellEdit.spellTbl == TJ.Board_TJ2 then
+                    if v.class == "WARRIOR" then
+                        spellID = 114030
+                    elseif v.class == "PALADIN" then
+                        spellID = 6940
+                    elseif v.class == "PRIEST" then
+                        if TuanJian.talentInfo[v.name] == 1 then
+                            spellID = 33206
+                        elseif TuanJian.talentInfo[v.name] == 2 then
+                            spellID = 47788
+                        end
+                    elseif v.class == "DRUID" and TJ.Ishealer(v) then
+                        spellID = 102342
+                    elseif v.class == "MONK" and TJ.Ishealer(v) then
+                        spellID = 116849
                     end
                 end
             end
@@ -835,7 +851,7 @@ end
 local function AddButton(owner, f, i, spellID)
     local width = 112
     local maxCow = 8
-    local bt = CreateFrame("EditBox", nil, f, "TuanJian_InputBoxTemplate")
+    local bt = CreateFrame("EditBox", nil, f, TJ.editTemplate)
     bt:SetSize(width, 20)
     bt:SetAutoFocus(false)
     if i == 1 then
@@ -1142,6 +1158,117 @@ function TJ.SetBoardEditFormNum(v, titleIndex, index, spell, id)
     spellEdit:SetCursorPosition(0)
     spellEdit:Save()
     return true
+end
+
+-- 单棒、多轮减伤链的一键安排（MOP）
+local function Board_AutoAssignMitigation(roundCount, arrange, isPhysical)
+    local s1, s2, s3, s4, s5, s6, s7 = ns.s1, ns.s2, ns.s3, ns.s4, ns.s5, ns.s6, ns.s7
+    local usedColumns = {}
+    local nextSlot = {
+        reduce = 1,
+        heal = 1,
+    }
+    local function Assign(group, v, ...)
+        local spellCount = select("#", ...)
+        for offset = 0, roundCount - 1 do
+            local slot = (nextSlot[group] + offset - 1) % roundCount + 1
+            if (usedColumns[slot] or 0) + spellCount <= arrange then
+                for i = 1, spellCount do
+                    TJ.SetBoardEditFormNum(v, slot, nil, select(i, ...), 1)
+                end
+                usedColumns[slot] = (usedColumns[slot] or 0) + spellCount
+                nextSlot[group] = slot % roundCount + 1
+                return
+            end
+        end
+    end
+
+    local tbl = TJ.SortRaidRosterInfo({ "WARRIOR" }, nil, true)
+    for _, v in ipairs(tbl) do Assign("reduce", v, s2, s3) end
+    local paladinRole = isPhysical and "healer" or nil
+    local tbl = TJ.SortRaidRosterInfo({ "PALADIN" }, paladinRole, true)
+    for _, v in ipairs(tbl) do Assign("reduce", v, s1) end
+    local tbl = TJ.SortRaidRosterInfo({ "SHAMAN" }, "healer", true)
+    for _, v in ipairs(tbl) do Assign("heal", v, s7, ns.s9, ns.s8) end
+    local tbl = TJ.SortRaidRosterInfo({ "PRIEST" }, "healer", true)
+    for _, v in ipairs(tbl) do
+        if TuanJian.talentInfo[v.name] == 1 then
+            Assign("reduce", v, s5)
+        else
+            Assign("heal", v, ns.s13)
+        end
+    end
+    if not isPhysical then
+        local tbl = TJ.SortRaidRosterInfo({ "DEATHKNIGHT" }, "dps", true)
+        for _, v in ipairs(tbl) do Assign("reduce", v, s4) end
+    end
+    local tbl = TJ.SortRaidRosterInfo({ "ROGUE" }, nil, true)
+    for _, v in ipairs(tbl) do Assign("reduce", v, s6) end
+    local tbl = TJ.SortRaidRosterInfo({ "SHAMAN" }, "dps", true)
+    for _, v in ipairs(tbl) do Assign("heal", v, ns.s9, ns.s10) end
+    local tbl = TJ.SortRaidRosterInfo({ "DRUID" }, "healer", true)
+    for _, v in ipairs(tbl) do Assign("heal", v, ns.s12) end
+    local tbl = TJ.SortRaidRosterInfo({ "MONK" }, "healer", true)
+    for _, v in ipairs(tbl) do Assign("heal", v, ns.s11) end
+    local tbl = TJ.SortRaidRosterInfo({ "PRIEST" }, "dps", true)
+    for _, v in ipairs(tbl) do Assign("heal", v, ns.s14) end
+end
+
+-- 魔法伤害团减安排。
+function TJ.Board_AutoAssignMitigation(roundCount, arrange)
+    Board_AutoAssignMitigation(roundCount, arrange)
+end
+
+-- 物理伤害团减安排：不安排反魔法领域，虔诚光环只安排奶骑。
+function TJ.Board_AutoAssignPhysicalMitigation(roundCount, arrange)
+    Board_AutoAssignMitigation(roundCount, arrange, true)
+end
+
+-- 单体减伤、多轮减伤链的一键安排（MOP）
+function TJ.Board_AutoAssignSingleTargetMitigation(roundCount, boardID)
+    local vigilance = ns.s21
+    local handOfSacrifice = ns.s22
+    local painSuppression = ns.s23
+    local guardianSpirit = ns.s24
+    local ironbark = ns.s25
+    local lifeCocoon = ns.s26
+    local nextRound = 1
+    local function Assign(v, spell)
+        if nextRound > roundCount then return end
+        if TJ.SetBoardEditFormNum(v, nextRound, 1, spell, boardID) then
+            nextRound = nextRound + 1
+        end
+    end
+
+    -- 输出战士：警戒。该技能为天赋，安排后仍需确认玩家已选择。
+    local tbl = TJ.SortRaidRosterInfo({ "WARRIOR" }, "dps", true)
+    for _, v in ipairs(tbl) do Assign(v, vigilance) end
+
+    -- 默认圣骑士选择仁慈，每人连续安排两轮牺牲之手。
+    local tbl = TJ.SortRaidRosterInfo({ "PALADIN" }, "healer+dps", true)
+    for _, v in ipairs(tbl) do
+        Assign(v, handOfSacrifice)
+        Assign(v, handOfSacrifice)
+    end
+
+    -- 恢复德鲁伊：铁木树皮。
+    local tbl = TJ.SortRaidRosterInfo({ "DRUID" }, "healer", true)
+    for _, v in ipairs(tbl) do Assign(v, ironbark) end
+
+    -- 纪律牧师：痛苦压制；神圣牧师：守护之魂。
+    local tbl = TJ.SortRaidRosterInfo({ "PRIEST" }, "healer", true)
+    for _, v in ipairs(tbl) do
+        local talent = TuanJian.talentInfo[v.name]
+        if talent == 1 then
+            Assign(v, painSuppression)
+        elseif talent == 2 then
+            Assign(v, guardianSpirit)
+        end
+    end
+
+    -- 织雾武僧：作茧缚命。
+    local tbl = TJ.SortRaidRosterInfo({ "MONK" }, "healer", true)
+    for _, v in ipairs(tbl) do Assign(v, lifeCocoon) end
 end
 
 -- 角色职责/天赋
@@ -1570,7 +1697,7 @@ do
         end
         f:EnableMouse(true)
 
-        local scroll = CreateFrame("ScrollFrame", nil, f, "TuanJian_ModernScrollFrameTemplate")
+        local scroll = CreateFrame("ScrollFrame", nil, f, TJ.scrollTemplate)
         scroll:SetWidth(f:GetWidth() - 31)
         scroll:SetHeight(f:GetHeight() - 9)
         scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 5, -5)

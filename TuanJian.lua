@@ -16,11 +16,12 @@ local realmID = GetRealmID()
 local player = UnitName("player")
 local GetAddOnMetadata = GetAddOnMetadata or C_AddOns.GetAddOnMetadata
 local IsAddOnLoaded = IsAddOnLoaded or C_AddOns.IsAddOnLoaded
+local DisableAddOn = DisableAddOn or C_AddOns.DisableAddOn
 
 TJ.Init(function()
     -- 主界面
     do
-        local f = TJ.CreateMainFrame("TJ.MainFrame", "<" .. AddonName .. "> " .. L["团减助手"])
+        local f = TJ.CreateMainFrame("TJ.MainFrame2", "<" .. AddonName .. "> " .. L["团减助手"])
         f.titleText:ClearAllPoints()
         f.titleText:SetPoint("TOP", -20, -4)
         f:SetSize(500, 500)
@@ -189,7 +190,7 @@ TJ.Init(function()
             TuanJian.options.lastVer = TJ.ver
         end)
     end
-    -- tinsert(UISpecialFrames, "TJ.MainFrame")
+    tinsert(UISpecialFrames, "TJ.MainFrame2")
 
     -- 版本号显示
     TJ.Init3(function()
@@ -808,6 +809,31 @@ TJ.Init(function()
             end)
         end
 
+        function TJ.UpdateBossEmptyText(FB, bossIndex)
+            local frame = TJ.frame[FB] and TJ.frame[FB][bossIndex]
+            if not (frame and frame.emptyText) then return end
+
+            local hasTask
+            if frame.all then
+                local combatTitles = {}
+                for _, title in ipairs(TJ.spChild[FB .. bossIndex] or {}) do
+                    combatTitles[title] = true
+                end
+                for _, v in ipairs(frame.all) do
+                    if not combatTitles[v.title] then
+                        hasTask = true
+                        break
+                    end
+                end
+            end
+
+            local hasMap
+            TJ.PairAllMap(function()
+                hasMap = true
+            end, FB, bossIndex)
+            frame.emptyText:SetShown(not hasTask and not hasMap)
+        end
+
         function TJ.LoadBoss(FB, bossIndex, hide)
             if not TJ.frame[FB][bossIndex] then
                 local f = CreateFrame("Frame", nil, TJ.tabFrame[FB])
@@ -824,6 +850,16 @@ TJ.Init(function()
                         end
                     end
                 end
+
+                local t = f:CreateFontString(nil, "OVERLAY")
+                t:SetPoint("TOP", TJ.raidChild, "TOP", 0, -20)
+                t:SetFont(BIAOGE_TEXT_FONT, 16, "OUTLINE")
+                t:SetTextColor(.6, .6, .6)
+                t:SetText(L["该Boss暂无任务安排"])
+                t:SetWordWrap(false)
+                f.emptyText = t
+                TJ.UpdateBossEmptyText(FB, bossIndex)
+
                 f:SetScript("OnShow", function(self)
                     TJ.UpdateEditIcon()
                     TJ.UpdateEditIcon_Board()
@@ -1790,7 +1826,7 @@ TJ.Init(function()
         t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")
         t:SetPoint("LEFT", icon, "RIGHT", 0, -1)
         t:SetTextColor(0, .75, 1)
-        t:SetText(AddonName)
+        t:SetText('TuanJian')
         f:SetWidth(icon:GetWidth() + t:GetWidth())
     end
 end)
@@ -1944,4 +1980,19 @@ TJ.Init2(function()
         f:SetAllPoints()
         f:SetFrameLevel(f:GetParent():GetFrameLevel())
     end
+end)
+
+TJ.Init2(function()
+    if not IsAddOnLoaded("TuanJian") then return end
+    StaticPopupDialogs["TUANJIANPLUS_DISABLE_TUANJIAN"] = {
+        text = L["你同时安装了：\n|cff00ff00TuanJianPlus|r和|cffffff00TuanJian|r插件。\n\n请禁用TuanJian插件！"],
+        button1 = L["禁用TuanJian插件"],
+        OnAccept = function()
+            DisableAddOn("TuanJian")
+            ReloadUI()
+        end,
+        whileDead = true,
+        showAlert = true,
+    }
+    StaticPopup_Show("TUANJIANPLUS_DISABLE_TUANJIAN")
 end)

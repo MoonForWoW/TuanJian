@@ -218,7 +218,7 @@ function TJ.CreateEdit(FB, bossIndex, name, index, list)
     index = index or #all
     local title = all[index].title
     local edits = all[index].edits
-    local edit = CreateFrame("EditBox", nil, title, "TuanJian_InputBoxTemplate")
+    local edit = CreateFrame("EditBox", nil, title, TJ.editTemplate)
     edit:SetSize(100, editHeight)
     if #edits == 0 then
         edit:SetPoint("LEFT", title, "RIGHT", 10, 0)

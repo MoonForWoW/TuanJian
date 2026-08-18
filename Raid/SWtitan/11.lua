@@ -41,17 +41,24 @@ TJ.Load[FB .. bossIndex] = function()
         mainFrame.SPELL_AURA_APPLIED = function(...)
             local tbl = { ... }
             local spellID = tbl[12]
-            if spellID == 43501 and TuanJian.options[name] == 1 and TJ.IsLeader() and tbl[9] then
-                local className, class = UnitClass(tbl[9])
-                if class == 'PALADIN' then
-                    SendChatMessage(msg:format(className, L['奉献']), "RAID_WARNING")
-                    SendChatMessage(msg:format(className, L['奉献']), "RAID_WARNING")
-                elseif class == 'WARRIOR' then
-                    SendChatMessage(msg:format(className, L['旋风斩']), "RAID_WARNING")
-                    SendChatMessage(msg:format(className, L['旋风斩']), "RAID_WARNING")
-                elseif class == 'DEATHKNIGHT' then
-                    SendChatMessage(msg:format(className, L['驱散团员的鲜血印记']), "RAID_WARNING")
-                    SendChatMessage(msg:format(className, L['驱散团员的鲜血印记']), "RAID_WARNING")
+            if TuanJian.options[name] == 1 and TJ.IsLeader() and tbl[9] then
+                if spellID == 43501 then
+                    local className, class = UnitClass(tbl[9])
+                    if class == 'PALADIN' then
+                        SendChatMessage(msg:format(className, L['奉献']), "RAID_WARNING")
+                        SendChatMessage(msg:format(className, L['奉献']), "RAID_WARNING")
+                    elseif class == 'WARRIOR' then
+                        SendChatMessage(msg:format(className, L['旋风斩']), "RAID_WARNING")
+                        SendChatMessage(msg:format(className, L['旋风斩']), "RAID_WARNING")
+                    elseif class == 'DEATHKNIGHT' then
+                        SendChatMessage(msg:format(className, L['驱散团员的鲜血印记']), "RAID_WARNING")
+                        SendChatMessage(msg:format(className, L['驱散团员的鲜血印记']), "RAID_WARNING")
+                    end
+                elseif spellID == 61606 then
+                    local point = TJ.GetRaidPoint()[tbl[9]]
+                    if point then
+                        SendChatMessage(L["驱散%s%s的鲜血印记"]:format(point, tbl[9]), "RAID_WARNING")
+                    end
                 end
             end
         end
@@ -60,7 +67,7 @@ TJ.Load[FB .. bossIndex] = function()
         TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
         local ontext = {
             L["灵魂虹吸点名团队提醒"],
-            L["当点名圣骑士/战士/死亡骑士时，在RW频道自动发送提醒。"],
+            L["当点名圣骑士/战士/死亡骑士，或团员获得鲜血印记时，在RW频道自动发送提醒。"],
             L["需要你是团长或助理，该功能才生效。"],
         }
         local f = ns.O.CreateCheckButton(name, AddTexture(136213) .. L["灵魂虹吸点名团队提醒"] .. L["（需要团长/助理）"],

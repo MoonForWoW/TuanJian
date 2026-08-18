@@ -115,6 +115,7 @@ TJ.Init2(function()
         end
     elseif TJ.IsMOP then
         TJ.Board_TJ1 = ns.sp["团减"]
+        TJ.Board_TJ2 = ns.sp["单体减伤"]
         TJ.Board_TJ6 = { 8143 }   -- 战栗
         TJ.Board_TJ7 = { 108199 } -- 群拉
         TJ.Board_TJ8 = { 102359 } -- 群缠
@@ -410,7 +411,7 @@ function TJ.CreateBoardSpellEdit(FB, bossIndex, id, v)
     local title = child.all[titleIndex].title
     local edits = child.all[titleIndex].edits
 
-    local playerEdit = CreateFrame("EditBox", nil, title, "TuanJian_InputBoxTemplate")
+    local playerEdit = CreateFrame("EditBox", nil, title, TJ.editTemplate)
     do
         playerEdit:SetSize(100, 20)
         if #edits == 0 then
@@ -506,7 +507,7 @@ function TJ.CreateBoardSpellEdit(FB, bossIndex, id, v)
         end
     end
 
-    local spellEdit = CreateFrame("EditBox", nil, title, "TuanJian_InputBoxTemplate")
+    local spellEdit = CreateFrame("EditBox", nil, title, TJ.editTemplate)
     do
         spellEdit:SetSize(100, 20)
         spellEdit:SetPoint("TOPLEFT", playerEdit, "BOTTOMLEFT", 0, -0)
@@ -581,7 +582,7 @@ function TJ.CreateBoardSpellEdit(FB, bossIndex, id, v)
     })
 end
 
-function TJ.Board_SetBar(bossSpellID, index, player, durTime, spellIDs, autoHide, now)
+function TJ.Board_SetBar(bossSpellID, index, player, durTime, spellIDs, autoHide, now, target)
     if not IsInRaid(1) then return end
     if not TJ.IsLeader() then return end
     local msg
@@ -589,6 +590,7 @@ function TJ.Board_SetBar(bossSpellID, index, player, durTime, spellIDs, autoHide
     durTime = format("%.2f", durTime)
     autoHide = autoHide and "autoHide" or ""
     now = now and "now" or ""
+    target = target or ""
     player = TJ.GFN(player)
     msg = "show" .. ","
         .. bossSpellID .. ","
@@ -597,13 +599,13 @@ function TJ.Board_SetBar(bossSpellID, index, player, durTime, spellIDs, autoHide
         .. durTime .. ","
         .. spellIDs .. ","
         .. autoHide .. ","
-        .. now
-        -- ..  ","..'苍骑士'
+        .. now .. ","
+        .. target
     -- pt(msg)
     C_ChatInfo.SendAddonMessage(GetNextBoardChannel(), msg, "RAID")
 end
 
-local function SetBar(tbl, arrange, bossSpellID, index, durationTime, autoHide, now)
+local function SetBar(tbl, arrange, bossSpellID, index, durationTime, autoHide, now, target)
     local players = {}
     for i = 1, arrange do
         local player = TJ.ClearCode(tbl.edits[i].playerEdit:GetText())
@@ -623,7 +625,7 @@ local function SetBar(tbl, arrange, bossSpellID, index, durationTime, autoHide, 
         end
     end
     for player, spellIDs in pairs(players) do
-        TJ.Board_SetBar(bossSpellID, index, player, durationTime, spellIDs, autoHide, now)
+        TJ.Board_SetBar(bossSpellID, index, player, durationTime, spellIDs, autoHide, now, target)
     end
 end
 
@@ -666,9 +668,7 @@ function TJ.Board_RunSpecial(bossSpellID, specialID)
         local turnNum = #info[bossSpellID].spell
         local durationTime = special.time
         local showIndex = index
-        while index > turnNum do
-            index = index - turnNum
-        end
+        index = (index - 1) % turnNum + 1
         SetBar(
             child.all[index],
             special.arrange or info[bossSpellID].arrange,
@@ -676,7 +676,8 @@ function TJ.Board_RunSpecial(bossSpellID, specialID)
             showIndex,
             durationTime,
             true,
-            info[bossSpellID].now
+            info[bossSpellID].now,
+            info[bossSpellID].target
         )
     end
 end
@@ -742,20 +743,11 @@ function TJ.Board_ENCOUNTER_START(FB, bossIndex, isTest)
                         if info[bossSpellID].canUpdate and nextTime - updateFrame.t <= TuanJian.options.boardTipsTime then
                             info[bossSpellID].canUpdate = nil
                             local durationTime = nextTime - updateFrame.t
-                            local tbl
-                            if child.all[index] then
-                                tbl = child.all[index]
-                            else
-                                for i = 1, 30 do
-                                    tbl = child.all[index - #child.all * i]
-                                    if tbl then
-                                        break
-                                    end
-                                end
-                            end
+                            local turnIndex = (index - 1) % #child.all + 1
+                            local tbl = child.all[turnIndex]
                             if tbl then
                                 SetBar(tbl, arrange, bossSpellID, index, durationTime
-                                , info[bossSpellID].autoHide, info[bossSpellID].now)
+                                , info[bossSpellID].autoHide, info[bossSpellID].now, info[bossSpellID].target)
                             end
                         end
                         if (info[bossSpellID].timeEndNextSpell or info[bossSpellID]["timeEndNextSpell" .. index])

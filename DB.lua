@@ -100,7 +100,8 @@ TJ.dispelFB = {}
 TJ.teamList = {}
 TJ.DBMCallback = {}
 TJ.SSpowerSpell = TJ.IsTitan and 48090
-TJ.scrollTemplate = "BiaoGe_ModernScrollFrameTemplate" or "UIPanelScrollFrameTemplate"
+TJ.editTemplate = "TuanJianPlus_InputBoxTemplate" or "InputBoxTemplate"
+TJ.scrollTemplate = "TuanJianPlus_ModernScrollFrameTemplate" or "UIPanelScrollFrameTemplate"
 
 for i = 1, 8 do
     tinsert(TJ.teamList, i .. L["队"])
@@ -212,9 +213,9 @@ TJ.Init(function()
             TJ.nowPhase = "P5"
             AddDB("SOO", 1136, "P5")
             AddDB("TOT", 1098, "P3")
-            AddDB("MSV", 1008, "P1")
-            AddDB("HOF", 1009, "P1")
             AddDB("TES", 996, "P1")
+            AddDB("HOF", 1009, "P1")
+            AddDB("MSV", 1008, "P1")
             spFB["HOF"] = "MSV"
             spFB["TES"] = "MSV"
 
@@ -260,8 +261,8 @@ TJ.Init(function()
             end
         elseif TJ.IsWLK then
             if TJ.IsTitan then
-                TJ.defaultFB = "MCtitan"
-                TJ.defaultBossIndex = 10
+                TJ.defaultFB = "SWtitan"
+                TJ.defaultBossIndex = 6
                 -- p1
                 do
                     AddDB("MCtitan", { 663, }, L["鲁西弗隆"], width, 550)
@@ -383,8 +384,8 @@ TJ.Init(function()
             AddDB("DS", { 1291, }, L["死亡之翼的背脊"], width, height)
             AddDB("DS", { 1299, }, L["疯狂的死亡之翼"], width, height)
         elseif TJ.IsMOP then
-            TJ.defaultFB = "TOT"
-            TJ.defaultBossIndex = 12
+            TJ.defaultFB = "SOO"
+            TJ.defaultBossIndex = 1
             -- P1
             do
                 AddDB("MSV", { 1395, }, L["石头守卫"], width, height)
@@ -422,7 +423,7 @@ TJ.Init(function()
             end
             -- 奥格
             do
-                local height = 550
+                -- local height = 550
                 AddDB("SOO", { 1602, }, L["伊墨苏斯"], width, height)
                 AddDB("SOO", { 1598, }, L["堕落的守护者"], width, height)
                 AddDB("SOO", { 1624, }, L["诺鲁什"], width, height)

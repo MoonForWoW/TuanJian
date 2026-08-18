@@ -74,7 +74,7 @@ TJ.Init(function()
         tex:SetTexCoord(raidTargetTbl[i].l, raidTargetTbl[i].r, raidTargetTbl[i].t, raidTargetTbl[i].b)
         tinsert(icons, tex)
 
-        local edit = CreateFrame("EditBox", nil, mainFrame, "TuanJian_InputBoxTemplate")
+        local edit = CreateFrame("EditBox", nil, mainFrame, TJ.editTemplate)
         edit:SetSize(130, 20)
         edit:SetPoint("LEFT", tex, "RIGHT", 20, 0)
         edit:SetAutoFocus(false)
@@ -449,7 +449,7 @@ do
                     end
                 end
                 if text ~= "" then
-                    GameTooltip:AddLine(L["<TJ>自动标记为："] .. text, 1, .82, 0)
+                    GameTooltip:AddLine(L["TuanJian：自动标记为"] .. text, 1, .82, 0)
                     GameTooltip:Show()
                 end
             end

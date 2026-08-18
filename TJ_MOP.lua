@@ -28,14 +28,37 @@ TJ.Init(function()
     local parent = TJ.frame[FB][bossIndex]
     parent.all = {}
 
+    local MAX_ROUNDS = 7
+    local ROUND_SPACING = 68
+
+    local scroll = CreateFrame("ScrollFrame", nil, parent, TJ.scrollTemplate)
+    scroll:SetPoint("TOPLEFT", TJ.MainFrame, "TOPLEFT", 0, -40)
+    scroll:SetPoint("BOTTOMRIGHT", TJ.MainFrame, "BOTTOMRIGHT", -20, 120)
+    scroll.ScrollBar.scrollStep = ROUND_SPACING
+    TJ.CreateSrollBarBackdrop(scroll.ScrollBar)
+    TJ.HookScrollBarShowOrHide(scroll)
+
+    local scrollChild = CreateFrame("Frame", nil, scroll)
+    scrollChild:SetSize(1, 1)
+    scroll:SetScrollChild(scrollChild)
+    parent.scroll = scroll
+    parent.scrollChild = scrollChild
+
+    local function UpdateScrollChildSize()
+        scrollChild:SetWidth(scroll:GetWidth())
+        local contentHeight = 60 + ROUND_SPACING * (TuanJian.MOPTJ.num - 1)
+        scrollChild:SetHeight(max(scroll:GetHeight(), contentHeight))
+    end
+    scroll:HookScript("OnSizeChanged", UpdateScrollChildSize)
+
     local function CreateTitle(name)
-        local f = CreateFrame("Frame", nil, parent)
+        local f = CreateFrame("Frame", nil, scrollChild)
         f:SetSize(70, 20)
         if next(parent.all) then
             local last = parent.all[#parent.all].title
             f:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -48)
         else
-            f:SetPoint("TOPLEFT", TJ.MainFrame, "TOPLEFT", 10, -50)
+            f:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 5, -20)
         end
         local t = f:CreateFontString()
         t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")
@@ -54,7 +77,7 @@ TJ.Init(function()
         local title = parent.all[titleIndex].title
         local edits = parent.all[titleIndex].edits
 
-        local playerEdit = CreateFrame("EditBox", nil, title, "TuanJian_InputBoxTemplate")
+        local playerEdit = CreateFrame("EditBox", nil, title, TJ.editTemplate)
         do
             playerEdit:SetSize(100, 20)
             if #edits == 0 then
@@ -147,7 +170,7 @@ TJ.Init(function()
             end
         end
 
-        local spellEdit = CreateFrame("EditBox", nil, title, "TuanJian_InputBoxTemplate")
+        local spellEdit = CreateFrame("EditBox", nil, title, TJ.editTemplate)
         do
             spellEdit:SetSize(100, 20)
             spellEdit:SetPoint("TOPLEFT", playerEdit, "BOTTOMLEFT", 0, -0)
@@ -229,7 +252,7 @@ TJ.Init(function()
             spellEdit = spellEdit,
         })
     end
-    for i = 1, 5 do
+    for i = 1, MAX_ROUNDS do
         CreateTitle(i)
         for i = 1, 7 do
             CreateEdit()
@@ -281,6 +304,8 @@ TJ.Init(function()
                 { name = L["3轮"], key = 3 },
                 { name = L["4轮"], key = 4 },
                 { name = L["5轮"], key = 5 },
+                { name = L["6轮"], key = 6 },
+                { name = L["7轮"], key = 7 },
             }
         },
         {
@@ -368,6 +393,7 @@ TJ.Init(function()
                 parent.all[i].title:Show()
             end
         end
+        UpdateScrollChildSize()
         TJ.exportTJFrame:UpdateText()
     end
 
@@ -730,7 +756,7 @@ TJ.Init(function()
                     end
                 end
             end
-        elseif TuanJian.MOPTJ.num == 5 then
+        elseif TuanJian.MOPTJ.num >= 5 then
             if TuanJian.MOPTJ.type == "mage" then
                 local tbl = TJ.SortRaidRosterInfo({ "WARRIOR" }, nil, true)
                 for i, v in ipairs(tbl) do
@@ -742,7 +768,7 @@ TJ.Init(function()
                 local done = {}
                 local tbl = TJ.SortRaidRosterInfo({ "SHAMAN" }, "healer", true)
                 for i, v in ipairs(tbl) do
-                    for i = startIndex, 5, 1 do
+                    for i = startIndex, TuanJian.MOPTJ.num, 1 do
                         if not done[i] then
                             TJ.SetBoardEditFormNum(v, i, nil, s7)
                             done[i] = true
@@ -754,7 +780,7 @@ TJ.Init(function()
                 local done = {}
                 local tbl = TJ.SortRaidRosterInfo({ "ROGUE" }, nil, true)
                 for i, v in ipairs(tbl) do
-                    for i = startIndex, 5, 1 do
+                    for i = startIndex, TuanJian.MOPTJ.num, 1 do
                         if not done[i] then
                             TJ.SetBoardEditFormNum(v, i, nil, s6)
                             done[i] = true
@@ -767,7 +793,7 @@ TJ.Init(function()
                 local tbl = TJ.SortRaidRosterInfo({ "PRIEST" }, "healer", true)
                 for i, v in ipairs(tbl) do
                     if TuanJian.talentInfo[v.name] == 1 then
-                        for i = 5, 1, -1 do
+                        for i = TuanJian.MOPTJ.num, 1, -1 do
                             if not done[i] then
                                 TJ.SetBoardEditFormNum(v, i, nil, s5)
                                 done[i] = true
@@ -780,7 +806,7 @@ TJ.Init(function()
                 local done = {}
                 local tbl = TJ.SortRaidRosterInfo({ "PALADIN" }, nil, true)
                 for i, v in ipairs(tbl) do
-                    for i = 5, 1, -1 do
+                    for i = TuanJian.MOPTJ.num, 1, -1 do
                         if not done[i] then
                             TJ.SetBoardEditFormNum(v, i, nil, s1)
                             done[i] = true
@@ -792,7 +818,7 @@ TJ.Init(function()
                 local done = {}
                 local tbl = TJ.SortRaidRosterInfo({ "DEATHKNIGHT" }, nil, true)
                 for i, v in ipairs(tbl) do
-                    for i = 5, 1, -1 do
+                    for i = TuanJian.MOPTJ.num, 1, -1 do
                         if not done[i] then
                             TJ.SetBoardEditFormNum(v, i, nil, s4)
                             done[i] = true
@@ -811,7 +837,7 @@ TJ.Init(function()
                 local done = {}
                 local tbl = TJ.SortRaidRosterInfo({ "SHAMAN" }, "healer", true)
                 for i, v in ipairs(tbl) do
-                    for i = startIndex, 5, 1 do
+                    for i = startIndex, TuanJian.MOPTJ.num, 1 do
                         if not done[i] then
                             TJ.SetBoardEditFormNum(v, i, nil, s7)
                             done[i] = true
@@ -823,7 +849,7 @@ TJ.Init(function()
                 local done = {}
                 local tbl = TJ.SortRaidRosterInfo({ "ROGUE" }, nil, true)
                 for i, v in ipairs(tbl) do
-                    for i = startIndex, 5, 1 do
+                    for i = startIndex, TuanJian.MOPTJ.num, 1 do
                         if not done[i] then
                             TJ.SetBoardEditFormNum(v, i, nil, s6)
                             done[i] = true
@@ -836,7 +862,7 @@ TJ.Init(function()
                 local tbl = TJ.SortRaidRosterInfo({ "PRIEST" }, "healer", true)
                 for i, v in ipairs(tbl) do
                     if TuanJian.talentInfo[v.name] == 1 then
-                        for i = 5, 1, -1 do
+                        for i = TuanJian.MOPTJ.num, 1, -1 do
                             if not done[i] then
                                 TJ.SetBoardEditFormNum(v, i, nil, s5)
                                 done[i] = true
@@ -849,7 +875,7 @@ TJ.Init(function()
                 local done = {}
                 local tbl = TJ.SortRaidRosterInfo({ "PALADIN" }, "healer", true)
                 for i, v in ipairs(tbl) do
-                    for i = 5, 1, -1 do
+                    for i = TuanJian.MOPTJ.num, 1, -1 do
                         if not done[i] then
                             TJ.SetBoardEditFormNum(v, i, nil, s1)
                             done[i] = true

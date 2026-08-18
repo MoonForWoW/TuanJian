@@ -35,6 +35,13 @@ TJ.Load[FB .. bossIndex] = function()
     local instanceID = TJ.FBinfo[FB].ID
     TJ.autoRaidTargetInfo[instanceID] = TJ.autoRaidTargetInfo[instanceID] or {}
     TJ.autoRaidTargetInfo[instanceID][25372] = { [8] = true, [7] = true } -- 斥候
+    TJ.autoRaidTargetInfo[instanceID][25588] = { -- 欺诈者之手
+        [8] = true,
+        [7] = true,
+        [6] = true,
+        [5] = true,
+        np = true,
+    }
 
     -- 站位图
     do
