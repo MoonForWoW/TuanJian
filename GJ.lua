@@ -17,7 +17,7 @@ local player = UnitName("player")
 local GetAddOnMetadata = GetAddOnMetadata or C_AddOns.GetAddOnMetadata
 local IsAddOnLoaded = IsAddOnLoaded or C_AddOns.IsAddOnLoaded
 
-local logo = "TuanJian: "
+local logo = AddonName .. ': '
 
 if not TJ.IsMOP then return end
 TJ.Init(function()

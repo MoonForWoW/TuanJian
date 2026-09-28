@@ -7,7 +7,7 @@ if not ldb then return end
 
 local pt = print
 
-local plugin = ldb:NewDataObject(AddonName, { text = AddonName, type = "data source", icon = "Interface\\AddOns\\TuanJianPlus\\Media\\icon\\icon.tga" })
+local plugin = ldb:NewDataObject(AddonName, { text = AddonName, type = "data source", icon = ns.Interface .. "Media\\icon\\icon.png" })
 
 function plugin:OnClick(button) --function plugin.OnClick(self, button)
     if button == "LeftButton" then
@@ -34,7 +34,7 @@ function plugin:OnLeave(button)
     GameTooltip:Hide()
 end
 
-TJ.Init3(function()
+TJ.Init(function()
     local icon = LibStub("LibDBIcon-1.0", true)
     if not icon then return end
     icon:Register(AddonName, plugin, TuanJian)

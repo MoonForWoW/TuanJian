@@ -477,7 +477,7 @@ TJ.Load[FB .. bossIndex] = function()
             if link then
                 local itemID = tonumber(link:match("item:(%d+):"))
                 if itemID == 31088 then
-                    lootplayer = lootplayer or TJ.playerName
+                    lootplayer = lootplayer or TJ.myName
                     TJ.GetNewEvent()["TRIGGER"] =
                         TJ.GetNewEvent()["TRIGGER"] or {}
                     local tbl = {

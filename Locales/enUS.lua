@@ -3,7 +3,6 @@ local AddonName, ns = ...
 if (GetLocale() ~= "enUS") then return end
 
 local L = ns.L
-L["检测到旧版TuanJian插件正在运行。TuanJianPlus已包含其功能，是否禁用TuanJian并重新加载界面？"] = "The legacy TuanJian addon is running. TuanJianPlus already includes its features. Disable TuanJian and reload the UI?"
 L["禁用并重载"] = "Disable and reload"
 L["进食充分"] = "Well Fed"
 L["食物"] = "Food"

@@ -19,7 +19,7 @@ local player = UnitName("player")
 local GetAddOnMetadata = GetAddOnMetadata or C_AddOns.GetAddOnMetadata
 local IsAddOnLoaded = IsAddOnLoaded or C_AddOns.IsAddOnLoaded
 
-local logo = "TuanJian: "
+local logo = AddonName .. ': '
 
 TJ.Init(function()
     local mainFrame = TJ.equipMainFrame
@@ -77,8 +77,8 @@ TJ.Init(function()
     end
 
     local function HideEquipFrame()
-        if _G.BG and _G.BG.equipFrame and not _G.BG.equipFrame.click then
-            _G.BG.equipFrame:Hide()
+        if _G.ZL and _G.ZL.equipFrame and not _G.ZL.equipFrame.click then
+            _G.ZL.equipFrame:Hide()
         end
     end
 
@@ -347,13 +347,13 @@ TJ.Init(function()
 
         function btMixin:UpdateEnchant()
             local name = self.name
-            if name and _G.BG and _G.BG.GetEnchantInfo then
+            if name and _G.ZL and _G.ZL.GetEnchantInfo then
                 local esum, gsum = 0, 0
                 local isFull = true
                 for _, slot in pairs(slots) do
                     local v = TuanJian.itemInfo[name][slot]
                     if v and v.link then
-                        local hasChant, maxChant, hasGem, maxGem, equipLoc = _G.BG.GetEnchantInfo(v.link)
+                        local hasChant, maxChant, hasGem, maxGem, equipLoc = _G.ZL.GetEnchantInfo(v.link)
                         if not hasChant and maxChant then
                             esum = esum + 1
                             isFull = false
@@ -566,7 +566,7 @@ TJ.Init(function()
         end
 
         function btMixin:OnEnter(button)
-            local f = _G.BG and _G.BG.equipFrame
+            local f = _G.ZL and _G.ZL.equipFrame
             if not (f and f:IsVisible()) and TuanJian.options.onEnterShowEquip == 1 then
                 self:ShowEquipFrame()
             end
@@ -584,10 +584,10 @@ TJ.Init(function()
         function btMixin:ShowEquipFrame(click)
             local unit = self.unit
             local name = self.name
-            if unit and self.class and self.iLevel and TuanJian.itemInfo[name] and _G.BG and _G.BG.ShowEquipFrame then
+            if unit and self.class and self.iLevel and TuanJian.itemInfo[name] and _G.ZL and _G.ZL.ShowEquipFrame then
                 local level = UnitLevel(unit) or 0
                 local iLevel = self.iLevel or 0
-                _G.BG.ShowEquipFrame(click, self, nil, nil, name,
+                _G.ZL.ShowEquipFrame(click, self, nil, nil, name,
                     SetClassCFF(name), level, self.class, iLevel, TuanJian.itemInfo[name],
                     TuanJian.talentInfo[name]
                 -- ,{'TOPRIGHT',TJ.MainFrame,'TOPLEFT',0,-20}
@@ -1072,7 +1072,7 @@ TJ.Init(function()
             if TJ.autoButton then
                 TJ.autoButton:SetEnabled(true)
             end
-            PlaySoundFile("Interface\\AddOns\\TuanJianPlus\\Media\\sound\\other\\done.mp3", "Master")
+            PlaySoundFile(ns.Interface .. "Media\\sound\\other\\done.mp3", "Master")
         end
 
         local function GetTeamRosterIDs(teamIndex)

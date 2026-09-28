@@ -1,5 +1,5 @@
 <Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
-	<EditBox name="TuanJianPlus_InputBoxScriptTemplate" enableMouse="true" virtual="true">
+	<EditBox name="TuanJian_InputBoxScriptTemplate" enableMouse="true" virtual="true">
 		<Scripts>
 			<OnTabPressed function="EditBox_OnTabPressed"/>
 			<OnEscapePressed function="EditBox_ClearFocus"/>
@@ -8,7 +8,7 @@
 		</Scripts>
 	</EditBox>
 
-	<EditBox name="TuanJianPlus_InputBoxVisualTemplate" virtual="true">
+	<EditBox name="TuanJian_InputBoxVisualTemplate" virtual="true">
 		<Layers>
 			<Layer level="BACKGROUND">
 				<Texture parentKey="Right" file="interface/common/commonsearch">
@@ -38,13 +38,13 @@
 		<!-- <FontString inherits="ChatFontNormal"/> -->
 	</EditBox>
 
-	<EditBox name="TuanJianPlus_InputBoxTemplate" inherits="TuanJianPlus_InputBoxScriptTemplate, TuanJianPlus_InputBoxVisualTemplate" virtual="true">
+	<EditBox name="TuanJian_InputBoxTemplate" inherits="TuanJian_InputBoxScriptTemplate, TuanJian_InputBoxVisualTemplate" virtual="true">
 		<Scripts>
 			<OnLoad function="TuanJian_InputBoxTemplate_OnLoad"/>
 		</Scripts>
 	</EditBox>
 
-	<EditBox name="TuanJianPlus_InputBoxInstructionsTemplate" inherits="TuanJianPlus_InputBoxTemplate" virtual="true">
+	<EditBox name="TuanJian_InputBoxInstructionsTemplate" inherits="TuanJian_InputBoxTemplate" virtual="true">
 		<!--KeyValues>
 				Optional
 				<KeyValue key="disabledColor" value="GRAY_FONT_COLOR" type="global"/>
@@ -65,7 +65,7 @@
 		<FontString inherits="GameFontHighlightSmall"/>
 	</EditBox>
 
-	<EditBox name="TuanJianPlus_SearchBoxTemplate" inherits="TuanJianPlus_InputBoxInstructionsTemplate" autoFocus="false" virtual="true">
+	<EditBox name="TuanJian_SearchBoxTemplate" inherits="TuanJian_InputBoxInstructionsTemplate" autoFocus="false" virtual="true">
 		<Layers>
 			<Layer level="OVERLAY">
 				<Texture name="$parentSearchIcon" file="Interface\Common\UI-Searchbox-Icon" parentKey="searchIcon">
@@ -123,7 +123,7 @@
 		</Scripts>
 	</EditBox>
 	
-	<Slider name="TuanJianPlus_ModernScrollBarTemplate" orientation="VERTICAL" enableMouse="true" virtual="true">
+	<Slider name="TuanJian_ModernScrollBarTemplate" orientation="VERTICAL" enableMouse="true" virtual="true">
 		<Size x="14" y="100"/>
 		<Layers>
 			<Layer level="BACKGROUND">
@@ -192,9 +192,9 @@
 		</Scripts>
 	</Slider>
 
-	<ScrollFrame name="TuanJianPlus_ModernScrollFrameTemplate" enableMouse="true" virtual="true">
+	<ScrollFrame name="TuanJian_ModernScrollFrameTemplate" enableMouse="true" virtual="true">
 		<Frames>
-			<Slider parentKey="ScrollBar" inherits="TuanJianPlus_ModernScrollBarTemplate">
+			<Slider parentKey="ScrollBar" inherits="TuanJian_ModernScrollBarTemplate">
 				<Anchors>
 					<Anchor point="TOPLEFT" relativePoint="TOPRIGHT" x="6" y="0"/>
 					<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT" x="8" y="0"/>
@@ -211,7 +211,7 @@
 		</Scripts>
 	</ScrollFrame>
 
-	<Slider name="TuanJianPlus_ModernHorizontalScrollBarTemplate" orientation="HORIZONTAL" enableMouse="true" virtual="true">
+	<Slider name="TuanJian_ModernHorizontalScrollBarTemplate" orientation="HORIZONTAL" enableMouse="true" virtual="true">
 		<Size x="100" y="14"/>
 		<Layers>
 			<Layer level="BACKGROUND">
@@ -279,9 +279,9 @@
 		</Scripts>
 	</Slider>
 
-	<ScrollFrame name="TuanJianPlus_ModernHorizontalScrollFrameTemplate" enableMouse="true" virtual="true">
+	<ScrollFrame name="TuanJian_ModernHorizontalScrollFrameTemplate" enableMouse="true" virtual="true">
 		<Frames>
-			<Slider parentKey="ScrollBar" inherits="TuanJianPlus_ModernHorizontalScrollBarTemplate">
+			<Slider parentKey="ScrollBar" inherits="TuanJian_ModernHorizontalScrollBarTemplate">
 				<Anchors>
 					<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" x="0" y="-6"/>
 					<Anchor point="TOPRIGHT" relativePoint="BOTTOMRIGHT" x="0" y="-6"/>

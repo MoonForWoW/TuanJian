@@ -32,6 +32,76 @@ local bossIndex = 1
 TJ.Load[FB .. bossIndex] = function()
     local mainFrame = TJ.frame[FB][bossIndex]
 
+    -- P2煞能迸发减伤链
+    local bossSpellID = 143498
+    local splitSpellID = 143020
+    local shaEruptionName = L["煞能迸发"]
+    local shaEruptionTexture = C_Spell.GetSpellTexture(bossSpellID)
+    TJ.AddBoard(mainFrame, function()
+        local arrange = 6
+        local spellTbl = {
+            {
+                title = L["1/5"],
+                class = nil,
+                spell = TJ.Board_TJ1,
+            },
+            {
+                title = L["2/6"],
+                class = nil,
+                spell = TJ.Board_TJ1,
+            },
+            {
+                title = L["3/7"],
+                class = nil,
+                spell = TJ.Board_TJ1,
+            },
+            {
+                title = L["4/8"],
+                class = nil,
+                spell = TJ.Board_TJ1,
+            },
+        }
+        local function AutoFuc()
+            TJ.Board_AutoAssignMitigation(#spellTbl, arrange)
+        end
+
+        local tbl = {
+            {
+                name = L["%s减伤链"]:format(shaEruptionName),
+                bossSpellID = bossSpellID,
+                arrange = arrange,
+                icon = shaEruptionTexture,
+                id = 1,
+                spell = spellTbl,
+                event = "BOSS_SAY",
+                canUpdate = nil,
+                autoNextSpell = nil,
+                startIndex = 0,
+                maxIndex = nil,
+                bossTime = { 20, 20, 20, 20, },
+                autoHide = true,
+            },
+            AutoFuc = AutoFuc,
+        }
+
+        mainFrame.Board_test = function()
+            TJ.Board_ENCOUNTER_START(FB, bossIndex, true)
+            mainFrame.BOSS_SAY("spell:" .. splitSpellID)
+        end
+
+        mainFrame.BOSS_SAY = function(msg)
+            if not msg:find("spell:" .. splitSpellID, 1, true) then return end
+            local info = TJ.Board_info[bossSpellID]
+            if not info then return end
+            info.index = info.index + info.step
+            info.canUpdate = true
+            info.updateFrame.t = 0
+        end
+
+        -- /run TJ.Board_ENCOUNTER_START("SOO",1,true) TJ.frame["SOO"][1].BOSS_SAY("spell:143020")
+        TJ.CreateBoard(FB, bossIndex, tbl)
+    end)
+
     -- 站位图
     do
         local tbl = {
@@ -272,13 +342,4 @@ TJ.Load[FB .. bossIndex] = function()
         TJ.AddSPTitle(FB, bossIndex, f)
     end
 
-    -- mainFrame.BOSS_SAY = function(msg)
-    --     if msg:match("") then
-    --         tinsert(TJ.GetNewCombatLog().otherTime, {
-    --             time = TJ.GetDurTime(),
-    --             name = "P2",
-    --         })
-    --         return
-    --     end
-    -- end
 end

@@ -360,7 +360,7 @@ do
     TJ.allEvent = { all = {}, lookup1 = {}, lookup2 = {} }
     -- 要保存当前血量的事件
     TJ.allEvent.spEvent2 = {
-        "_DAMAGE$", "_HEAL$", "_MISSED$", "UNIT_DIED",
+        "_DAMAGE$", "DAMAGE_SPLIT", "_HEAL$", "_MISSED$", "UNIT_DIED",
     }
     -- 光环事件
     TJ.allEvent.spEvent4 = {

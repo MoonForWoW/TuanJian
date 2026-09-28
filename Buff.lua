@@ -19,7 +19,7 @@ local player = UnitName("player")
 local GetAddOnMetadata = GetAddOnMetadata or C_AddOns.GetAddOnMetadata
 local IsAddOnLoaded = IsAddOnLoaded or C_AddOns.IsAddOnLoaded
 
-local logo = "TuanJian: "
+local logo = AddonName .. ': '
 local buffTbl
 local EXPIRE_TIME = 60 * 3
 
@@ -327,7 +327,7 @@ TJ.Init(function()
             if IsAddOnLoaded("PallyPower") then
                 TJ.RegisterEvent("CHAT_MSG_ADDON", function(self, event, ...)
                     local prefix, msg, distType, _, sender = ...
-                    if prefix == "PLPWR" and sender == TJ.playerName and strfind(msg, "^PASSIGN") then
+                    if prefix == "PLPWR" and sender == TJ.myName and strfind(msg, "^PASSIGN") then
                         local _, _, name, assign = strfind(msg, "^PASSIGN (.*)@([0-9n]*)")
                         name = TJ.GSN(name)
                         if not PallyPower_Assignments[name] then
@@ -592,7 +592,7 @@ TJ.Init(function()
         f:RegisterEvent("CHAT_MSG_RAID")
         f:RegisterEvent("CHAT_MSG_RAID_LEADER")
         f:SetScript("OnEvent", function(self, event, msg, playerName, ...)
-            if not (TJ.IsLeader() and IsInRaid(1)) then return end
+            if not (TuanJian.options.sendTips == 1 and TJ.IsLeader() and IsInRaid(1)) then return end
             for i, text in ipairs(blackList) do
                 if strfind(msg, text, 1, true) then
                     return

@@ -35,7 +35,7 @@ TJ.Load[FB .. bossIndex] = function()
     -- 地震冲击减伤链
     local bossSpellID = 144485
     local firstRoundSpellID = 144483
-    local shockPulseName = L["地震冲击"]
+    local shockPulseName = L["地震&地震冲击"]
     local shockPulseTexture = C_Spell.GetSpellTexture(bossSpellID)
     TJ.AddBoard(mainFrame, function()
         local arrange = 6
@@ -78,8 +78,8 @@ TJ.Load[FB .. bossIndex] = function()
                 autoNextSpell = nil,
                 startIndex = 1,
                 maxIndex = 8,
-                bossTime = { 4, 3.5, 3.5, 3.5, 4, 3.5, 3.5, 3.5, },
-                autoHide = true,
+                bossTime = { 4, 16.5, 15, 15, 4, 16.5, 15, 15, },
+                autoHide = nil,
             },
             AutoFuc = AutoFuc,
         }
@@ -91,30 +91,41 @@ TJ.Load[FB .. bossIndex] = function()
 
         mainFrame.Board_SPELL_CAST_START = function(info, ...)
             local spellID = select(12, ...)
-            local boardInfo = info[bossSpellID]
-            if not boardInfo or boardInfo.index > boardInfo.maxIndex then return end
-
-            local isFirstRound = spellID == firstRoundSpellID and (boardInfo.index - 1) % 4 == 0
-            local isShockPulseRound = spellID == bossSpellID and (boardInfo.index - 1) % 4 ~= 0
-            if isFirstRound and TJ.startTime then
-                tinsert(TJ.GetNewCombatLog().otherTime, {
-                    time = TJ.GetDurTime(),
-                    name = "P2",
-                })
-            end
-            if isFirstRound or isShockPulseRound then
+            if spellID == firstRoundSpellID then
+                local boardInfo = info[bossSpellID]
+                if not boardInfo or boardInfo.index > boardInfo.maxIndex then return end
+                if TJ.startTime then
+                    tinsert(TJ.GetNewCombatLog().otherTime, {
+                        time = TJ.GetDurTime(),
+                        name = "P2",
+                    })
+                end
                 boardInfo.canUpdate = true
                 boardInfo.updateFrame.t = 0
-                After(0, function()
-                    if info[bossSpellID] then
-                        info[bossSpellID].index = info[bossSpellID].index + info[bossSpellID].step
-                    end
+                After(4, function()
+                    TJ.Board_NextSpell(bossSpellID)
                 end)
             end
         end
+        mainFrame.Board_SPELL_CAST_SUCCESS = function(info, ...)
+            local spellID = select(12, ...)
+            if spellID == bossSpellID then
+                local boardInfo = info[bossSpellID]
+                local index = boardInfo.index
+                if index == 2 or index == 3 or index == 6 or index == 7 then
+                    TJ.Board_NextSpell(bossSpellID)
+                else
+                    TJ.Board_HideBar(bossSpellID)
+                    boardInfo.index = boardInfo.index + boardInfo.step
+                end
+            end
+        end
+--[=[ 
+/run TJ.Board_ENCOUNTER_START("SOO",6,true) TJ.Board_SPELL_CAST_START(nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,144483)
+/run TJ.Board_SPELL_CAST_START(nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,144483)
+/run TJ.Board_SPELL_CAST_SUCCESS(nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,144485)
+ ]=]
 
-        -- /run TJ.Board_ENCOUNTER_START("SOO",6,true) TJ.Board_SPELL_CAST_START(nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,144483)
-        -- /run TJ.Board_SPELL_CAST_START(nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,144485)
         TJ.CreateBoard(FB, bossIndex, tbl)
     end)
 

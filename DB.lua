@@ -8,6 +8,22 @@ local realmID = GetRealmID()
 
 local GetAddOnMetadata = GetAddOnMetadata or C_AddOns.GetAddOnMetadata
 
+if not GetItemInfo then
+    GetItemInfo = C_Item.GetItemInfo
+end
+if not GetItemInfoInstant then
+    GetItemInfoInstant = C_Item.GetItemInfoInstant
+end
+if not GetItemQualityColor then
+    GetItemQualityColor = C_Item.GetItemQualityColor
+end
+if not GetItemCount then
+    GetItemCount = C_Item.GetItemCount
+end
+if not GetItemSetInfo then
+    GetItemSetInfo = C_Item.GetItemSetInfo
+end
+
 local LibBG = LibStub:GetLibrary("BiaoGe-LibUIDropDownMenu-4.0") -- 调用库菜单UI
 ns.LibBG = LibBG
 
@@ -19,7 +35,7 @@ TuanJianTooltip2 = CreateFrame("GameTooltip", "TuanJianTooltip2", UIParent, "Gam
 TuanJianTooltip2:SetClampedToScreen(false)
 
 -- 游戏按键设置
-BINDING_HEADER_TUANJIAN = "TuanJian"
+BINDING_HEADER_TUANJIAN = AddonName
 BINDING_NAME_TUANJIAN = L["打开/关闭界面"]
 
 TJ = {}
@@ -30,24 +46,26 @@ do
     if ver < 20000 then
         TJ.IsVanilla = true
     end
-
-    if TJ.IsVanilla and (C_Engraving and C_Engraving.IsEngravingEnabled()) then
-        TJ.IsVanilla_Sod = true
-    end
-
-    if TJ.IsVanilla and not (C_Engraving and C_Engraving.IsEngravingEnabled()) then
-        TJ.IsVanilla_60 = true
-    end
-
     if ver < 40000 then
         TJ.verLess3 = true
     else
         TJ.verOver4 = true
     end
+
+    if ver < 16000 then
+        TJ.IsVanilla = true
+        if (C_Engraving and C_Engraving.IsEngravingEnabled()) then
+            TJ.IsVanilla_Sod = true
+        else
+            TJ.IsVanilla_60 = true
+        end
+    elseif ver < 20000 then
+        TJ.IsForever = true
+        TJ.IsNewUI = true -- 正式服/无限服UI
+    end
     if ver >= 20000 and ver < 30000 then
         TJ.IsTBC = true
     end
-
     if ver >= 30000 and ver < 40000 then
         TJ.IsWLK = true
         if ver >= 38000 then
@@ -56,106 +74,130 @@ do
             TJ.IsWLK_80 = true
         end
     end
-
     if ver >= 40000 and ver < 50000 then
         TJ.IsCTM = true
     end
-
     if ver >= 50000 then
         TJ.IsMOP = true
-        -- if GetCurrentRegion() ~= 5 then
-        --     TJ.IsMOP_TW = true
-        -- else
-        --     TJ.IsMOP_CN = true
-        -- end
-        -- TJ.IsMOP_TW = nil
-        -- TJ.IsCTM = true
     end
-
     if ver >= 110000 then
         TJ.IsRetail = true
+        TJ.IsNewUI = true -- 正式服/无限服UI
     end
 end
 
-TJ.options = {}
-TJ.iconTexCoord = { .07, .93, .07, .93 }
-TJ.borderAlpha = .5
-TJ.sendCD = .25
-TJ.sendCD2 = .3
-TJ.onEnterAlpha = 0.1
-TJ.scrollStep = 80
-TJ.FBtbl = {}
-TJ.FBinfo = {}
-TJ.tabFrame = {}
-TJ.frame = {}
-TJ.Load = {}
-TJ.healerClass = { "PALADIN", "SHAMAN", "DRUID", "PRIEST", "MONK" }
-TJ.tankClass = { "DEATHKNIGHT", "WARRIOR", "DRUID", "PALADIN", "MONK" }
-TJ.dps1Class = { "DEATHKNIGHT", "PALADIN", "WARRIOR", "SHAMAN", "DRUID", "ROGUE", "MONK" }
-TJ.dps2Class = { "HUNTER", "SHAMAN", "DRUID", "MAGE", "WARLOCK", "PRIEST" }
-TJ.TJClass = { "DEATHKNIGHT", "PALADIN", "WARRIOR", "SHAMAN", "MONK", "DRUID", "ROGUE", "PRIEST", }
-TJ.ver = "v" .. GetAddOnMetadata(AddonName, "Version")
-TJ.dispelInfo = {}
-TJ.dispelFB = {}
-TJ.teamList = {}
-TJ.DBMCallback = {}
-TJ.SSpowerSpell = TJ.IsTitan and 48090
-TJ.editTemplate = "TuanJianPlus_InputBoxTemplate" or "InputBoxTemplate"
-TJ.scrollTemplate = "TuanJianPlus_ModernScrollFrameTemplate" or "UIPanelScrollFrameTemplate"
-
-for i = 1, 8 do
-    tinsert(TJ.teamList, i .. L["队"])
+-- 全局变量
+do
+    TJ.options = {}
+    TJ.iconTexCoord = { .07, .93, .07, .93 }
+    TJ.borderAlpha = .5
+    TJ.sendCD = .25
+    TJ.sendCD2 = .3
+    TJ.onEnterAlpha = 0.1
+    TJ.scrollStep = 80
+    TJ.FBtbl = {}
+    TJ.FBinfo = {}
+    TJ.tabFrame = {}
+    TJ.frame = {}
+    TJ.Load = {}
+    TJ.healerClass = { "PALADIN", "SHAMAN", "DRUID", "PRIEST", "MONK" }
+    TJ.tankClass = { "DEATHKNIGHT", "WARRIOR", "DRUID", "PALADIN", "MONK" }
+    TJ.dps1Class = { "DEATHKNIGHT", "PALADIN", "WARRIOR", "SHAMAN", "DRUID", "ROGUE", "MONK" }
+    TJ.dps2Class = { "HUNTER", "SHAMAN", "DRUID", "MAGE", "WARLOCK", "PRIEST" }
+    TJ.TJClass = { "DEATHKNIGHT", "PALADIN", "WARRIOR", "SHAMAN", "MONK", "DRUID", "ROGUE", "PRIEST", }
+    TJ.ver = "v" .. GetAddOnMetadata(AddonName, "Version")
+    TJ.dispelInfo = {}
+    TJ.dispelFB = {}
+    TJ.teamList = {}
+    TJ.DBMCallback = {}
+    TJ.SSpowerSpell = TJ.IsTitan and 48090
+    TJ.editTemplate = "TuanJian_InputBoxTemplate" or "InputBoxTemplate"
+    TJ.scrollTemplate = "TuanJian_ModernScrollFrameTemplate" or "UIPanelScrollFrameTemplate"
+    for i = 1, 8 do
+        tinsert(TJ.teamList, i .. L["队"])
+    end
 end
 
-function TJ.Init(func)
+-- 事件
+do
+    function TJ.Init(func)
+        local f = CreateFrame("Frame")
+        f:RegisterEvent("PLAYER_LOGIN")
+        f:SetScript("OnEvent", function(self, event)
+            self:UnregisterEvent("PLAYER_LOGIN")
+            securecall(func)
+        end)
+    end
+
+    function TJ.Init2(func)
+        local f = CreateFrame("Frame")
+        f:RegisterEvent("PLAYER_ENTERING_WORLD")
+        f:SetScript("OnEvent", function(self, event, isLogin, isReload)
+            self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+            securecall(func)
+        end)
+    end
+
+    local events = {}
     local f = CreateFrame("Frame")
-    f:RegisterEvent("ADDON_LOADED")
-    f:SetScript("OnEvent", function(self, event, addonName)
-        if addonName ~= AddonName then
-            return
+    f:SetScript("OnEvent", function(_, event, ...)
+        for _, func in ipairs(events[event]) do
+            if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+                securecall(func, f, event, CombatLogGetCurrentEventInfo())
+            else
+                securecall(func, f, event, ...)
+            end
         end
-        self:UnregisterEvent("ADDON_LOADED")
-        securecall(func)
     end)
+    function TJ.RegisterEvent(event, func)
+        if not events[event] then
+            events[event] = {}
+            f:RegisterEvent(event)
+        end
+        tinsert(events[event], func)
+    end
 end
 
-function TJ.Init2(func)
-    local f = CreateFrame("Frame")
-    f:RegisterEvent("PLAYER_ENTERING_WORLD")
-    f:SetScript("OnEvent", function(self, event, isLogin, isReload)
-        self:UnregisterEvent("PLAYER_ENTERING_WORLD")
-        securecall(func)
-    end)
-end
+-- 名字
+do
+    function TJ.GN(unit)
+        unit = unit or "player"
+        if unit == "t" then
+            unit = "target"
+        end
+        return GetUnitName(unit, true)
+    end
 
-function TJ.Init3(func)
-    local f = CreateFrame("Frame")
-    f:RegisterEvent("PLAYER_LOGIN")
-    f:SetScript("OnEvent", function(self, event)
-        self:UnregisterEvent("PLAYER_LOGIN")
-        securecall(func)
+    TJ.Init(function()
+        TJ.myName = TJ.GN()
     end)
-end
+    TJ.realmName = GetRealmName()
+    local realmName_chat = GetRealmName():gsub(" %- ", "")
 
-local events = {}
-local f = CreateFrame("Frame")
-f:SetScript("OnEvent", function(_, event, ...)
-    for _, func in ipairs(events[event]) do
-        if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-            securecall(func, f, event, CombatLogGetCurrentEventInfo())
+    function TJ.GFN(name)
+        if not name then return end
+        local name, realm = strsplit("-", name)
+        realm = realm or realmName_chat
+        return name .. "-" .. realm
+    end
+
+    function TJ.GSN(name)
+        if not name then return end
+        local name, realm = strsplit("-", name)
+        if not realm or realm == "" or realm == realmName_chat then
+            return name
         else
-            securecall(func, f, event, ...)
+            return name .. "-" .. realm
         end
     end
-end)
-function TJ.RegisterEvent(event, func)
-    if not events[event] then
-        events[event] = {}
-        f:RegisterEvent(event)
+
+    function TJ.SPN(name)
+        if not name then return end
+        return strsplit("-", name)
     end
-    tinsert(events[event], func)
 end
 
+-- 初始化
 TJ.Init(function()
     local spFB = {}
 
@@ -606,7 +648,7 @@ TJ.Init(function()
         TJ.sound2 = 569593                      -- 升级音效
         TJ.sound3 = SOUNDKIT.IG_MAINMENU_CLOSE  -- 菜单打开音效
 
-        local Interface = "Interface\\AddOns\\TuanJianPlus\\Media\\sound\\AI\\"
+        local Interface = ns.Interface .. "Media\\sound\\AI\\"
         TJ.voice = {}
         -- TJ.voice["即将连线"] = Interface .. "即将连线.mp3"
         -- TJ.voice["即将寄生"] = Interface .. "即将寄生.mp3"
@@ -802,6 +844,7 @@ TJ.Init(function()
     end
 end)
 
+-- 配置
 TJ.Init(function()
     TuanJian = TuanJian or {}
     TuanJian.options = TuanJian.options or {}

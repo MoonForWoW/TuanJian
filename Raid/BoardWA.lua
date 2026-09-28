@@ -24,7 +24,7 @@ TJ.Init2(function()
     local UpdateBoardVers
     local function GetBiaoGePreviewStatus()
         local BiaoGe = _G.BG
-        if not (IsAddOnLoaded("BiaoGe") and BiaoGe) then
+        if not (TJ.IsLoadBiaoGe() and BiaoGe) then
             return nil, "missing"
         end
         if type(BiaoGe.GetVerNum) ~= "function" or type(BiaoGe.ver) ~= "string" or
@@ -340,7 +340,7 @@ TJ.Init2(function()
                 1, .82, 0, true)
             GameTooltip:AddLine(" ")
             local BiaoGe = _G.BG
-            if not (IsAddOnLoaded("BiaoGe") and BiaoGe) then
+            if not (TJ.IsLoadBiaoGe() and BiaoGe) then
                 GameTooltip:AddLine(L["你没有安装BiaoGe插件，无法使用此功能。"], 1, 0, 0, true)
                 GameTooltip:Show()
                 return
@@ -418,7 +418,7 @@ TJ.Init2(function()
 
     UpdateBoardVers = function()
         local BiaoGe = _G.BG
-        if IsInRaid(1) and IsAddOnLoaded("BiaoGe") and BiaoGe then
+        if IsInRaid(1) and TJ.IsLoadBiaoGe() and BiaoGe then
             local raid = BiaoGe.SortRaidRosterInfo()
             local minVer = BiaoGe.GetVerNum(BoardBiaoGeVer)
             local count = 0

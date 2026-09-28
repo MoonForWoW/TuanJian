@@ -176,7 +176,7 @@ function TJ.CreateMap(FB, bossIndex, iconTbl, width, height,
         local tex = map:CreateTexture()
         tex:SetPoint("TOPLEFT", 1, -1)
         tex:SetPoint("BOTTOMRIGHT", -1, 1)
-        tex:SetTexture(format("Interface\\AddOns\\TuanJianPlus\\Media\\icon\\%s\\m%s.png", FB, (mapBossIndex or bossIndex) .. (childIndex or "")))
+        tex:SetTexture(format(ns.Interface .. "Media\\icon\\%s\\m%s.png", FB, (mapBossIndex or bossIndex) .. (childIndex or "")))
 
         map:SetScript("OnMouseDown", function(self)
             if TJ.lastfocus then
@@ -402,7 +402,7 @@ function TJ.CreateMap(FB, bossIndex, iconTbl, width, height,
         bt.map = map
         map.sendButton = bt
         bt:SetScript("OnClick", function(self)
-            if not IsAddOnLoaded("BiaoGe") then
+            if not TJ.IsLoadBiaoGe() then
                 ns.SendSystemMessage(L["你没有安装BiaoGe插件，无法使用此功能。"])
                 return
             end
@@ -428,7 +428,7 @@ function TJ.CreateMap(FB, bossIndex, iconTbl, width, height,
             GameTooltip:AddLine(L["把站位图发送到团队。"]:format(BiaoGeVer), 1, .82, 0, true)
             GameTooltip:AddLine(L["需要团员的BiaoGe插件版本高于或等于|cffffffff%s|r。"]:format(BiaoGeVer), 1, .82, 0, true)
             GameTooltip:AddLine(" ")
-            if not IsAddOnLoaded("BiaoGe") then
+            if not TJ.IsLoadBiaoGe() then
                 GameTooltip:AddLine(L["你没有安装BiaoGe插件，无法使用此功能。"], 1, 0, 0, true)
                 GameTooltip:Show()
                 return
@@ -580,7 +580,7 @@ function TJ.CreateMapIcon(FB, bossIndex, index, v, width,
 
         local broder = f:CreateTexture()
         broder:SetAllPoints()
-        broder:SetTexture([[Interface\AddOns\TuanJianPlus\Media\icon\broder.png]])
+        broder:SetTexture(ns.Interface .. "Media\\icon\\broder.png")
         f.broder = broder
 
         if v.notMask then
@@ -608,7 +608,7 @@ function TJ.CreateMapIcon(FB, bossIndex, index, v, width,
                 end
                 f.icon:SetTexture(v.isNPC_icon)
             else
-                f.icon:SetTexture(format("Interface\\AddOns\\TuanJianPlus\\Media\\icon\\%s\\%s.png", FB, v.isNPC))
+                f.icon:SetTexture(format(ns.Interface .. "Media\\icon\\%s\\%s.png", FB, v.isNPC))
                 f.isBoss = true
             end
             f.numText:SetText(v.index or v.isNPC_text or nil)
@@ -831,7 +831,7 @@ function TJ.UpdateMapAddon()
     local BG = _G.BG
     TJ.PairAllMap(function(map)
         local addonText = map.sendButton.addonText
-        if (IsAddOnLoaded("BiaoGe") and IsInRaid(1)) then
+        if (TJ.IsLoadBiaoGe() and IsInRaid(1)) then
             addonText:Show()
         else
             addonText:Hide()

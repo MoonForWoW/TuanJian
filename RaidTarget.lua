@@ -17,7 +17,7 @@ local player = UnitName("player")
 local GetAddOnMetadata = GetAddOnMetadata or C_AddOns.GetAddOnMetadata
 local IsAddOnLoaded = IsAddOnLoaded or C_AddOns.IsAddOnLoaded
 
-local logo = "TuanJian: "
+local logo = AddonName .. ': '
 
 TJ.Init(function()
     local mainFrame = TJ.raidTargetMainFrame
@@ -258,9 +258,13 @@ TJ.Init(function()
             edit:ClearAll()
         end
         if not notClearRT then
-            for i = 1, GetNumGroupMembers(1) do
-                local unit = "raid" .. i
-                SetRaidTarget(unit, 0)
+            if RemoveRaidTargets then
+                RemoveRaidTargets()
+            else
+                for i = 1, GetNumGroupMembers(1) do
+                    local unit = "raid" .. i
+                    SetRaidTarget(unit, 0)
+                end
             end
         end
     end
@@ -316,7 +320,7 @@ TJ.Init(function()
                     self.t = 0
                     for i, edit in ipairs(mainFrame.edits) do
                         local player = TJ.ClearCode(edit:GetText())
-                        if player and player ~= '' then
+                        if player and player ~= '' and CanBeRaidTarget(player) then
                             local iconIndex = GetRaidTargetIndex(player)
                             if iconIndex ~= i then
                                 SetRaidTarget(player, i)

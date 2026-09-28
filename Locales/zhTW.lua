@@ -3,7 +3,6 @@ local AddonName, ns = ...
 if (GetLocale() ~= "zhTW") then return end
 
 local L = ns.L
-L["检测到旧版TuanJian插件正在运行。TuanJianPlus已包含其功能，是否禁用TuanJian并重新加载界面？"] = "偵測到舊版TuanJian插件正在運行。TuanJianPlus已包含其功能，是否停用TuanJian並重新載入介面？"
 L["禁用并重载"] = "停用並重載"
 L["进食充分"] = "進食充分"
 L["食物"] = "食物"

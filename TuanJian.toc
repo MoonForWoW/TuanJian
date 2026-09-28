@@ -1,10 +1,10 @@
 ## Interface: 20506, 30405, 38002, 50504, 50505, 50506, 120000
-## Title: <TuanJianPlus> |cff00BFFF团减助手|r
+## Title: <TuanJian> |cff00BFFF团减助手|r
 ## Notes: 插件命令：/TuanJian或/TJ
-## IconTexture: Interface\AddOns\TuanJianPlus\Media\icon\icon.tga
+## IconTexture: Interface\AddOns\TuanJian\Media\icon\icon.png
 ## Author: 苍穹之霜
 ## SavedVariables: TuanJian
-## Version: 2.2.0
+## Version: 2.2.1
 
 Templates.xml
 Libs\embeds.xml
@@ -31,7 +31,7 @@ Raid\RaidFunc.lua
 Raid\CombatLog.lua
 Raid\Map.lua
 Raid\CombatFrame.lua
-Raid\CombatFrame_tooltip.lua
+Raid\CombatFrame2.lua
 Raid\Dispel.lua
 Raid\Board.lua
 Raid\BoardWA.lua

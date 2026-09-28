@@ -18,7 +18,7 @@ local player = UnitName("player")
 local GetAddOnMetadata = GetAddOnMetadata or C_AddOns.GetAddOnMetadata
 local IsAddOnLoaded = IsAddOnLoaded or C_AddOns.IsAddOnLoaded
 
-local logo = "TuanJian: "
+local logo = AddonName .. ': '
 
 -- 站位图导出/导入
 function TJ.ExportMapUI()

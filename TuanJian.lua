@@ -193,7 +193,7 @@ TJ.Init(function()
     tinsert(UISpecialFrames, "TJ.MainFrame2")
 
     -- 版本号显示
-    TJ.Init3(function()
+    do
         TJ.raidVersion = {}
 
         local function SendMyVer()
@@ -242,7 +242,7 @@ TJ.Init(function()
             end
         end)
 
-        if _G.BG then
+        if _G.BG and _G.BG.ButtonRaidVer then
             _G.BG.ButtonRaidVer:HookScript("OnEnter", function(self)
                 local parent = GameTooltip
                 TuanJianTooltip2:SetOwner(parent, "ANCHOR_NONE", 0, 0)
@@ -291,7 +291,7 @@ TJ.Init(function()
                 TuanJianTooltip2:Hide()
             end)
         end
-    end)
+    end
 
     -- 模块切换
     do
@@ -1820,7 +1820,7 @@ TJ.Init(function()
         local icon = f:CreateTexture()
         icon:SetSize(20, 20)
         icon:SetPoint("LEFT")
-        icon:SetTexture([[Interface\AddOns\TuanJianPlus\Media\icon\icon.tga]])
+        icon:SetTexture(ns.Interface .. "Media\\icon\\icon.tga")
 
         local t = f:CreateFontString()
         t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")
@@ -1983,16 +1983,16 @@ TJ.Init2(function()
 end)
 
 TJ.Init2(function()
-    if not IsAddOnLoaded("TuanJian") then return end
-    StaticPopupDialogs["TUANJIANPLUS_DISABLE_TUANJIAN"] = {
-        text = L["你同时安装了：\n|cff00ff00TuanJianPlus|r和|cffffff00TuanJian|r插件。\n\n请禁用TuanJian插件！"],
-        button1 = L["禁用TuanJian插件"],
+    if not IsAddOnLoaded("TuanJianPlus") then return end
+    StaticPopupDialogs["TUANJIANPLUS_DISABLE_TUANJIAN_"] = {
+        text = L["你同时安装了：\n|cff00ff00TuanJianPlus|r和|cffffff00TuanJian|r插件。\n\n请禁用TuanJianPlus插件！"],
+        button1 = L["禁用TuanJianPlus插件"],
         OnAccept = function()
-            DisableAddOn("TuanJian")
+            DisableAddOn("TuanJianPlus")
             ReloadUI()
         end,
         whileDead = true,
         showAlert = true,
     }
-    StaticPopup_Show("TUANJIANPLUS_DISABLE_TUANJIAN")
+    StaticPopup_Show("TUANJIANPLUS_DISABLE_TUANJIAN_")
 end)

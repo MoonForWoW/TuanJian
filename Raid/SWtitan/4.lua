@@ -322,12 +322,12 @@ TJ.Load[FB .. bossIndex] = function()
                     SendChatMessage(msg1, "WHISPER", nil, player)
                 end
             end
-            if player == TJ.playerName and TuanJian.options[tipName2] == 1 and burnWarningFrame then
+            if player == TJ.myName and TuanJian.options[tipName2] == 1 and burnWarningFrame then
                 burnWarningFrame:Show()
                 After(2, function()
                     burnWarningFrame:Hide()
                 end)
-                PlaySoundFile("Interface\\AddOns\\TuanJianPlus\\Media\\sound\\other\\BoxingArenaSound.ogg", "Master")
+                PlaySoundFile(ns.Interface .. "Media\\sound\\other\\BoxingArenaSound.ogg", "Master")
             end
             return
         end

@@ -79,7 +79,7 @@ function TJ.CombatFiterEvent(type, subevent, info, ...)
         if subevent:match("_MISSED$") then
             return true
         end
-        if subevent:match("_DAMAGE$") then
+        if subevent:match("_DAMAGE$") or subevent == "DAMAGE_SPLIT" then
             return true
         end
         if subevent:match("_HEAL$") then
@@ -296,7 +296,7 @@ local function _GetHealth(self, tbl, v, subevent, isSpell, isEnvironmental)
         spellName = v[num - 2],
         i = v.i,
     }
-    if subevent:match("_DAMAGE$") then
+    if subevent:match("_DAMAGE$") or subevent == "DAMAGE_SPLIT" then
         __tbl.type = "damage"
         __tbl.amount = v[num]
         __tbl.over = v[num + 1] == -1 and 0 or v[num + 1] -- 未过量时为-1

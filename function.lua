@@ -11,40 +11,6 @@ local pt = print
 local r, g, b = GetClassColor(select(2, UnitClass("player")))
 local BG = TJ
 
-function TJ.GN(unit)
-    unit = unit or "player"
-    if unit == "t" then
-        unit = "target"
-    end
-    return GetUnitName(unit, true)
-end
-
-TJ.playerName = TJ.GN()
-TJ.realmName = GetRealmName()
-local realmName_chat = GetRealmName():gsub(" %- ", "")
-
-function TJ.GFN(name)
-    if not name then return end
-    local name, realm = strsplit("-", name)
-    realm = realm or realmName_chat
-    return name .. "-" .. realm
-end
-
-function TJ.GSN(name)
-    if not name then return end
-    local name, realm = strsplit("-", name)
-    if not realm or realm == "" or realm == realmName_chat then
-        return name
-    else
-        return name .. "-" .. realm
-    end
-end
-
-function TJ.SPN(name)
-    if not name then return end
-    return strsplit("-", name)
-end
-
 local function Size(t)
     local s = 0
     for k, v in pairs(t) do
@@ -236,9 +202,9 @@ local function AddTexture(Texture, y, coord)
     elseif Texture == "QUEST" then -- 黄色感叹号
         tex = "Interface\\GossipFrame\\AvailableQuestIcon"
     elseif Texture == "BOX" then
-        tex = "Interface\\AddOns\\TuanJianPlus\\Media\\icon\\BOX"
+        tex = ns.Interface .. "Media\\icon\\BOX"
     elseif Texture == "DD" then
-        tex = "Interface\\AddOns\\TuanJianPlus\\Media\\icon\\DD"
+        tex = ns.Interface .. "Media\\icon\\DD"
     elseif Texture == "LEFT" then
         return "|A:NPE_LeftClick:0:0|a"
     elseif Texture == "RIGHT" then
@@ -560,7 +526,7 @@ function TJ.SkinDropDown(dropDown)
     local tex = dropDown:CreateTexture("OVERLAY")
     tex:SetPoint("TOPLEFT", bt, "TOPLEFT", 2, -2)
     tex:SetPoint("BOTTOMRIGHT", bt, "BOTTOMRIGHT", -2, 2)
-    tex:SetTexture("Interface/AddOns/TuanJianPlus/Media/textures/arrow.tga")
+    tex:SetTexture(ns.Interface .. "Media\\textures\\arrow.tga")
     tex:SetRotation(math.pi)
     dropDown:HookScript("OnEnter", function(self)
         if dropDown.isDisabled then return end
@@ -2664,4 +2630,8 @@ function TJ.ButtonIsInRight(self)
     if self:GetCenter() > UIParent:GetWidth() * 0.5 then
         return true
     end
+end
+
+function TJ.IsLoadBiaoGe()
+    return C_AddOns.IsAddOnLoaded("BiaoGe") or C_AddOns.IsAddOnLoaded("BiaoGeX")
 end
