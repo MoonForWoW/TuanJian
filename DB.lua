@@ -116,6 +116,7 @@ do
     for i = 1, 8 do
         tinsert(TJ.teamList, i .. L["队"])
     end
+    ns.BiaoGeName = 'BiaoGeX'
 end
 
 -- 事件
@@ -223,7 +224,9 @@ TJ.Init(function()
             spFB["TKtitan"] = "SSC"
         elseif TJ.IsWLK then
             if TJ.IsTitan then
-                TJ.nowPhase = "P5"
+                TJ.nowPhase = "P6"
+                AddDB("ULDtitan", 603, "P6")
+
                 AddDB("SWtitan", 580, "P5")
                 AddDB("ZAMtitan", 568, "P5")
                 spFB["ZAMtitan"] = "SWtitan"
@@ -303,8 +306,8 @@ TJ.Init(function()
             end
         elseif TJ.IsWLK then
             if TJ.IsTitan then
-                TJ.defaultFB = "SWtitan"
-                TJ.defaultBossIndex = 6
+                TJ.defaultFB = "ULDtitan"
+                TJ.defaultBossIndex = 13
                 -- p1
                 do
                     AddDB("MCtitan", { 663, }, L["鲁西弗隆"], width, 550)
@@ -386,6 +389,23 @@ TJ.Init(function()
                     AddDB("ZAMtitan", { 1192, }, L["哈尔拉兹"], width, height)
                     AddDB("ZAMtitan", { 1193, }, L["妖术领主玛拉卡斯"], width, height)
                     AddDB("ZAMtitan", { 1194, }, L["祖尔金"], width, height)
+                end
+                -- P6
+                do
+                    AddDB("ULDtitan", {}, L["烈焰巨兽"], width, height, nil, true)
+                    AddDB("ULDtitan", {}, L["锋鳞"], width, height, nil, true)
+                    AddDB("ULDtitan", {}, L["掌炉者"], width, height, nil, true)
+                    AddDB("ULDtitan", {}, L["拆解者"], width, height, nil, true)
+                    AddDB("ULDtitan", {}, L["钢铁议会"], width, height, nil, true)
+                    AddDB("ULDtitan", {}, L["科隆加恩"], width, height, nil, true)
+                    AddDB("ULDtitan", {}, L["欧尔利亚"], width, height, nil, true)
+                    AddDB("ULDtitan", {}, L["霍迪尔"], width, height, nil, true)
+                    AddDB("ULDtitan", { 752, 1141, }, L["托里姆"], width, height)
+                    AddDB("ULDtitan", {}, L["弗蕾亚"], width, height, nil, true)
+                    AddDB("ULDtitan", {}, L["米米尔隆"], width, height, nil, true)
+                    AddDB("ULDtitan", {}, L["维扎克斯将军"], width, height, nil, true)
+                    AddDB("ULDtitan", { 756, 1143, }, L["尤格萨隆"], width, height)
+                    AddDB("ULDtitan", {}, L["奥尔加隆"], width, height, nil, true)
                 end
             else
                 TJ.defaultFB = "ICC"

@@ -274,9 +274,9 @@ TJ.Init2(function()
             end
             local _, status = GetBiaoGePreviewStatus()
             if status == "missing" then
-                GameTooltip:AddLine(L["你没有安装BiaoGe插件，无法预览减伤链进度条。"], 1, 0, 0, true)
+                GameTooltip:AddLine(L["你没有安装%s插件，无法预览减伤链进度条。"]:format(ns.BiaoGeName), 1, 0, 0, true)
             elseif status == "outdated" then
-                GameTooltip:AddLine(format(L["你的BiaoGe插件版本低于%s，无法预览减伤链进度条。"], BoardBiaoGeVer), 1, 0, 0, true)
+                GameTooltip:AddLine(format(L["你的%s插件版本低于%s，无法预览减伤链进度条。"], ns.BiaoGeName, BoardBiaoGeVer), 1, 0, 0, true)
             end
             GameTooltip:Show()
         end)
@@ -306,9 +306,9 @@ TJ.Init2(function()
             GameTooltip:AddLine(L["打开减伤链设置。"], 1, .82, 0, true)
             local _, status = GetBiaoGePreviewStatus()
             if status == "missing" then
-                GameTooltip:AddLine(L["你没有安装BiaoGe插件，无法打开减伤链设置。"], 1, 0, 0, true)
+                GameTooltip:AddLine(L["你没有安装%s插件，无法打开减伤链设置。"]:format(ns.BiaoGeName), 1, 0, 0, true)
             elseif status == "outdated" then
-                GameTooltip:AddLine(format(L["你的BiaoGe插件版本低于%s，无法打开减伤链设置。"], BoardBiaoGeVer), 1, 0, 0, true)
+                GameTooltip:AddLine(format(L["你的%s插件版本低于%s，无法打开减伤链设置。"], ns.BiaoGeName, BoardBiaoGeVer), 1, 0, 0, true)
             end
             GameTooltip:Show()
         end)
@@ -336,12 +336,12 @@ TJ.Init2(function()
             GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT", 0, 0)
             GameTooltip:ClearLines()
             GameTooltip:AddLine(L["减伤链"], 1, 1, 1)
-            GameTooltip:AddLine(L["团员的BiaoGe插件版本高于或等于|cffffffff%s|r，才能看到减伤进度条。"]:format(BoardBiaoGeVer),
+            GameTooltip:AddLine(L["团员的%s插件版本高于或等于|cffffffff%s|r，才能看到减伤进度条。"]:format(ns.BiaoGeName, BoardBiaoGeVer),
                 1, .82, 0, true)
             GameTooltip:AddLine(" ")
             local BiaoGe = _G.BG
             if not (TJ.IsLoadBiaoGe() and BiaoGe) then
-                GameTooltip:AddLine(L["你没有安装BiaoGe插件，无法使用此功能。"], 1, 0, 0, true)
+                GameTooltip:AddLine(L["你没有安装%s插件，无法使用此功能。"]:format(ns.BiaoGeName), 1, 0, 0, true)
                 GameTooltip:Show()
                 return
             end

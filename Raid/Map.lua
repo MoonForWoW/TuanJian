@@ -403,7 +403,7 @@ function TJ.CreateMap(FB, bossIndex, iconTbl, width, height,
         map.sendButton = bt
         bt:SetScript("OnClick", function(self)
             if not TJ.IsLoadBiaoGe() then
-                ns.SendSystemMessage(L["你没有安装BiaoGe插件，无法使用此功能。"])
+                ns.SendSystemMessage(L["你没有安装%s插件，无法使用此功能。"]:format(ns.BiaoGeName))
                 return
             end
             if not (IsInRaid(1) and TJ.IsLeader()) then
@@ -426,10 +426,10 @@ function TJ.CreateMap(FB, bossIndex, iconTbl, width, height,
             GameTooltip:ClearLines()
             GameTooltip:AddLine(L["发送"], 1, 1, 1)
             GameTooltip:AddLine(L["把站位图发送到团队。"]:format(BiaoGeVer), 1, .82, 0, true)
-            GameTooltip:AddLine(L["需要团员的BiaoGe插件版本高于或等于|cffffffff%s|r。"]:format(BiaoGeVer), 1, .82, 0, true)
+            GameTooltip:AddLine(L["需要团员的%s插件版本高于或等于|cffffffff%s|r。"]:format(ns.BiaoGeName, BiaoGeVer), 1, .82, 0, true)
             GameTooltip:AddLine(" ")
             if not TJ.IsLoadBiaoGe() then
-                GameTooltip:AddLine(L["你没有安装BiaoGe插件，无法使用此功能。"], 1, 0, 0, true)
+                GameTooltip:AddLine(L["你没有安装%s插件，无法使用此功能。"]:format(ns.BiaoGeName), 1, 0, 0, true)
                 GameTooltip:Show()
                 return
             end
@@ -1011,8 +1011,8 @@ function TJ.SendMap(FB, bossIndex, mapIndex, childIndex, mapBossIndex, map)
         for i, name in ipairs(map.verInfo.names) do
             str = str .. ns.SetClassCFF(name) .. (i ~= #map.verInfo.names and ' ' or '')
         end
-        ns.SendSystemMessage(L["该站位图需要BiaoGe插件%s，有%s名玩家由于插件版本太旧无法接收：%s。"]:format(
-            map.verInfo.ver, #map.verInfo.names, str))
+        ns.SendSystemMessage(L["该站位图需要%s插件%s，有%s名玩家由于插件版本太旧无法接收：%s。"]:format(
+            ns.BiaoGeName, map.verInfo.ver, #map.verInfo.names, str))
     end
 end
 

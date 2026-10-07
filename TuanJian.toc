@@ -4,7 +4,7 @@
 ## IconTexture: Interface\AddOns\TuanJian\Media\icon\icon.png
 ## Author: 苍穹之霜
 ## SavedVariables: TuanJian
-## Version: 2.2.1
+## Version: 2.2.2
 
 Templates.xml
 Libs\embeds.xml
@@ -24,6 +24,7 @@ Raid\TOC\embeds.xml
 Raid\TOT\embeds.xml
 Raid\ZUGtitan\embeds.xml
 Raid\SWtitan\embeds.xml
+Raid\ULDtitan\embeds.xml
 Raid\SOO\embeds.xml
 Raid\spell.lua
 Raid\Resistance.lua

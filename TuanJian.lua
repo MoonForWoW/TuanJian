@@ -757,11 +757,10 @@ TJ.Init(function()
                             TJ.PlaySound(1)
                         end)
                         tinsert(buttons, { bossIndex = bossIndex, bt = bt })
-
-                        if #TJ.FBinfo[FB] > 1 and bossIndex == #TJ.FBinfo[FB] then
-                            CreateNextBossButton(bt, buttons)
-                        end
                     end
+                end
+                if #buttons > 1 then
+                    CreateNextBossButton(TJ.tabFrame[FB][last], buttons)
                 end
             end
             if not onlyLoad then
@@ -894,8 +893,16 @@ TJ.Init(function()
                 TJ.lastFrame:Hide()
             end
             local FB = TuanJian.FB
-            if not TJ.FBinfo[TuanJian.FB][bossIndex] then
-                bossIndex = 1
+            if not TJ.frame[FB][bossIndex] then
+                for index, info in ipairs(TJ.FBinfo[FB]) do
+                    if not info.hide then
+                        bossIndex = index
+                        break
+                    end
+                end
+                if not TJ.frame[FB][bossIndex] then
+                    return
+                end
             end
             TuanJian.bossIndex = bossIndex
             TuanJian[FB].lastBoss = bossIndex

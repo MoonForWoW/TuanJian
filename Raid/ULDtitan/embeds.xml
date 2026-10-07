@@ -1,0 +1,16 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="Raid\ULDtitan\1.lua"/>
+    <Script file="Raid\ULDtitan\2.lua"/>
+    <Script file="Raid\ULDtitan\3.lua"/>
+    <Script file="Raid\ULDtitan\4.lua"/>
+    <Script file="Raid\ULDtitan\5.lua"/>
+    <Script file="Raid\ULDtitan\6.lua"/>
+    <Script file="Raid\ULDtitan\7.lua"/>
+    <Script file="Raid\ULDtitan\8.lua"/>
+    <Script file="Raid\ULDtitan\9.lua"/>
+    <Script file="Raid\ULDtitan\10.lua"/>
+    <Script file="Raid\ULDtitan\11.lua"/>
+    <Script file="Raid\ULDtitan\12.lua"/>
+    <Script file="Raid\ULDtitan\13.lua"/>
+    <Script file="Raid\ULDtitan\14.lua"/>
+</Ui>

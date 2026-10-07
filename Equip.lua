@@ -732,6 +732,16 @@ TJ.Init(function()
             TJ.PlaySound(1)
             TuanJian.options.onEnterShowEquip = self:GetChecked() and 1 or 0
         end)
+        bt:SetScript("OnEnter", function(self)
+            if _G.ZL and _G.ZL.ShowEquipFrame then return end
+            GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT", 0, 0)
+            GameTooltip:ClearLines()
+            GameTooltip:AddLine(L['错误'], 1, 1, 1, true)
+            GameTooltip:AddLine(L["该功能需要安装ZongLan插件才能生效。"], 1, 0, 0, true)
+            GameTooltip:Show()
+        end)
+        bt:SetScript("OnLeave", GameTooltip_Hide)
+
 
         -- 战斗状态提示（红色文本，位于按钮上方）
         local combatTip = mainFrame:CreateFontString()

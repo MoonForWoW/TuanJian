@@ -216,9 +216,9 @@ function TJ.CreateBoard(FB, bossIndex, spellInfo)
             " ",
             L["|cffffffff使用效果"],
             " ",
-            L["|cffffffff团员：|r已安装BiaoGe插件的团员如果该轮减伤是他自己，屏幕上方会显示一个倒计时进度条，方便他知道什么时候交减伤。剩余时间少于3秒时还会有\"叮叮叮\"音效提醒。"],
+            L["|cffffffff团员：|r已安装%s插件的团员如果该轮减伤是他自己，屏幕上方会显示一个倒计时进度条，方便他知道什么时候交减伤。剩余时间少于3秒时还会有\"叮叮叮\"音效提醒。"]:format(ns.BiaoGeName),
             " ",
-            L["|cffffffff团长/助理：|r你能看到所有人每一轮的倒计时进度条。剩余时间少于5秒时会自动密语相应责任人，提醒他开减伤，即使对方没有安装BiaoGe插件。"],
+            L["|cffffffff团长/助理：|r你能看到所有人每一轮的倒计时进度条。剩余时间少于5秒时会自动密语相应责任人，提醒他开减伤，即使对方没有安装%s插件。"]:format(ns.BiaoGeName),
         }
         local f = CreateFrame("Frame", nil, mainFrame)
         f:SetPoint("TOPLEFT", 5, -1)
