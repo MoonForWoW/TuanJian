@@ -53,6 +53,7 @@ TJ.Init2(function()
             local FB = TuanJian.FB
             local bossIndex = TuanJian.bossIndex
             local board = TJ.frame[FB][bossIndex].board
+            if board.GetPlanName then return TJ.ClearCode(board:GetPlanName(), nil, OnEnter) end
             local boardID = TuanJian[FB][bossIndex].lastBoard
             local boardType = TJ.ClearCode(board.tabButton[boardID]:GetText(), nil, OnEnter)
             return boardType
@@ -109,6 +110,7 @@ TJ.Init2(function()
             local FB = TuanJian.FB
             local bossIndex = TuanJian.bossIndex
             local board = TJ.frame[FB][bossIndex].board
+            if board.GetQuestText then return board:GetQuestText(OnEnter) end
             local boardID = TuanJian[FB][bossIndex].lastBoard
             local boardType = TJ.ClearCode(board.tabButton[boardID]:GetText(), nil, OnEnter)
             if not OnEnter then

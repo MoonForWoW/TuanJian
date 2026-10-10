@@ -1181,6 +1181,7 @@ function TJ.GetAllQuestText(OnEnter)
     local point = TJ.GetRaidPoint()
     if isBoard then
         local board = TJ.frame[FB][bossIndex].board
+        if board.GetAllQuestText then return board:GetAllQuestText(OnEnter) end
         local boardID = TuanJian[FB][bossIndex].lastBoard
         local boardType = TJ.ClearCode(board.tabButton[boardID]:GetText(), nil, OnEnter)
         parent = board.child[boardID]

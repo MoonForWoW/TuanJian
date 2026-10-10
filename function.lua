@@ -1415,6 +1415,55 @@ function TJ.CreateButton(parent)
     return bt
 end
 
+-- 聊天长度按字节计算；链接整体换行，避免截断链接和中文字符。
+function TJ.SplitChatMessage(text, prefix)
+    prefix = prefix or ""
+    if #prefix + #text <= 255 then
+        return text ~= "" and { prefix .. text } or {}
+    end
+    local limit = 255 - #prefix
+    local messages, parts = {}, {}
+    local length = 0
+    local function Append(token)
+        if length + #token > limit then
+            messages[#messages + 1] = prefix .. table.concat(parts)
+            parts, length = {}, 0
+        end
+        parts[#parts + 1] = token
+        length = length + #token
+    end
+    local i = 1
+    while i <= #text do
+        local rest = text:sub(i)
+        local link = rest:match("^|c%x%x%x%x%x%x%x%x|H.-|h.-|h|r")
+            or rest:match("^|H.-|h.-|h")
+        if link then
+            if #link <= limit then
+                Append(link)
+            else
+                -- 极长链接改用显示文本，仍保留技能或物品名称。
+                local label = link:match("|h(.-)|h") or ""
+                text = text:sub(1, i - 1) .. label .. text:sub(i + #link)
+                link = ""
+            end
+            i = i + #link
+        elseif rest:match("^|c%x%x%x%x%x%x%x%x") then
+            i = i + 10
+        elseif rest:sub(1, 2) == "|r" then
+            i = i + 2
+        else
+            local byte = text:byte(i)
+            local size = byte >= 240 and 4 or byte >= 224 and 3 or byte >= 192 and 2 or 1
+            Append(text:sub(i, i + size - 1))
+            i = i + size
+        end
+    end
+    if length > 0 then
+        messages[#messages + 1] = prefix .. table.concat(parts)
+    end
+    return messages
+end
+
 function TJ.SendMsgToRaid(tbl)
     local sendCD = TJ.sendCD2
     local t = 0
@@ -1431,12 +1480,14 @@ function TJ.SendMsgToRaid(tbl)
     end
     local channel = GetChannel()
     for i, texts in ipairs(tbl) do
-        After(t, function()
-            for _, text in ipairs(texts) do
-                SendChatMessage(text, i == 1 and channel or "RAID")
+        for _, text in ipairs(texts) do
+            for _, message in ipairs(TJ.SplitChatMessage(text)) do
+                After(t, function()
+                    SendChatMessage(message, i == 1 and channel or "RAID")
+                end)
+                t = t + sendCD
             end
-        end)
-        t = t + sendCD
+        end
     end
     return t
 end
@@ -1445,6 +1496,8 @@ function TJ.UpdateMainFrameSize()
     if not TJ.UpdateMainFrameSizeFrame then
         TJ.UpdateMainFrameSizeFrame = CreateFrame("Frame")
     end
+    local f = TJ.UpdateMainFrameSizeFrame
+    f:SetScript("OnUpdate", nil)
     local FB = TuanJian.FB
     local bossIndex = TuanJian.bossIndex
     local h1 = floor(TJ.MainFrame:GetHeight())
@@ -1459,14 +1512,16 @@ function TJ.UpdateMainFrameSize()
     local TIME = .5
     local addW = max(w1, w2) - min(w1, w2)
     local addH = max(h1, h2) - min(h1, h2)
-    if addW <= 5 and addH <= 5 then return end
+    if addW <= 5 and addH <= 5 then
+        TJ.MainFrame:SetSize(w2, h2)
+        return
+    end
     if w1 > w2 then
         addW = -addW
     end
     if h1 > h2 then
         addH = -addH
     end
-    local f = TJ.UpdateMainFrameSizeFrame
     f.t = 0
     f:SetScript("OnUpdate", function(self, t)
         self.t = self.t + t

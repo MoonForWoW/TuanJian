@@ -265,6 +265,7 @@ TJ.Init(function()
             spFB["TES"] = "MSV"
 
             if BGDEBUG then
+                AddDB("ULDtitan", 603, "P6")
             end
         end
 
@@ -383,29 +384,29 @@ TJ.Init(function()
                     AddDB("SWtitan", { 728, }, L["穆鲁"], width, height)
                     AddDB("SWtitan", { 729, }, L["基尔加丹"], width, height)
 
-                    AddDB("ZAMtitan", { 1189, }, L["埃基尔松"], width, height)
-                    AddDB("ZAMtitan", { 1190, }, L["纳洛拉克"], width, height)
-                    AddDB("ZAMtitan", { 1191, }, L["加亚莱"], width, height)
-                    AddDB("ZAMtitan", { 1192, }, L["哈尔拉兹"], width, height)
+                    AddDB("ZAMtitan", { 1189, }, L["埃基尔松"], width, height, true)
+                    AddDB("ZAMtitan", { 1190, }, L["纳洛拉克"], width, height, true)
+                    AddDB("ZAMtitan", { 1191, }, L["加亚莱"], width, height, true)
+                    AddDB("ZAMtitan", { 1192, }, L["哈尔拉兹"], width, height, true)
                     AddDB("ZAMtitan", { 1193, }, L["妖术领主玛拉卡斯"], width, height)
-                    AddDB("ZAMtitan", { 1194, }, L["祖尔金"], width, height)
+                    AddDB("ZAMtitan", { 1194, }, L["祖尔金"], width, height, true)
                 end
                 -- P6
                 do
-                    AddDB("ULDtitan", {}, L["烈焰巨兽"], width, height, nil, true)
-                    AddDB("ULDtitan", {}, L["锋鳞"], width, height, nil, true)
-                    AddDB("ULDtitan", {}, L["掌炉者"], width, height, nil, true)
-                    AddDB("ULDtitan", {}, L["拆解者"], width, height, nil, true)
-                    AddDB("ULDtitan", {}, L["钢铁议会"], width, height, nil, true)
-                    AddDB("ULDtitan", {}, L["科隆加恩"], width, height, nil, true)
-                    AddDB("ULDtitan", {}, L["欧尔利亚"], width, height, nil, true)
-                    AddDB("ULDtitan", {}, L["霍迪尔"], width, height, nil, true)
+                    AddDB("ULDtitan", { 744, 1132, }, L["烈焰巨兽"], width, height, true)
+                    AddDB("ULDtitan", { 746, 1139, }, L["锋鳞"], width, height, true)
+                    AddDB("ULDtitan", { 745, 1136, }, L["掌炉者"], width, height, true)
+                    AddDB("ULDtitan", { 747, 1142, }, L["拆解者"], width, height, true)
+                    AddDB("ULDtitan", { 748, 1140, }, L["钢铁议会"], width, height, true)
+                    AddDB("ULDtitan", { 749, 1137, }, L["科隆加恩"], width, height, true)
+                    AddDB("ULDtitan", { 750, 1131, }, L["欧尔利亚"], width, height, true)
+                    AddDB("ULDtitan", { 751, 1135, }, L["霍迪尔"], width, height, true)
                     AddDB("ULDtitan", { 752, 1141, }, L["托里姆"], width, height)
-                    AddDB("ULDtitan", {}, L["弗蕾亚"], width, height, nil, true)
-                    AddDB("ULDtitan", {}, L["米米尔隆"], width, height, nil, true)
-                    AddDB("ULDtitan", {}, L["维扎克斯将军"], width, height, nil, true)
+                    AddDB("ULDtitan", { 753, 1133, }, L["弗蕾亚"], width, height, true)
+                    AddDB("ULDtitan", { 754, 1138, }, L["米米尔隆"], width, height, true)
+                    AddDB("ULDtitan", { 755, 1134, }, L["维扎克斯将军"], width, height, true)
                     AddDB("ULDtitan", { 756, 1143, }, L["尤格萨隆"], width, height)
-                    AddDB("ULDtitan", {}, L["奥尔加隆"], width, height, nil, true)
+                    AddDB("ULDtitan", { 757, 1130, }, L["奥尔加隆"], width, height)
                 end
             else
                 TJ.defaultFB = "ICC"
@@ -503,6 +504,20 @@ TJ.Init(function()
             end
 
             if BGDEBUG then
+                AddDB("ULDtitan", { 744, 1132, }, L["烈焰巨兽"], width, height, true)
+                AddDB("ULDtitan", { 746, 1139, }, L["锋鳞"], width, height, true)
+                AddDB("ULDtitan", { 745, 1136, }, L["掌炉者"], width, height, true)
+                AddDB("ULDtitan", { 747, 1142, }, L["拆解者"], width, height, true)
+                AddDB("ULDtitan", { 748, 1140, }, L["钢铁议会"], width, height, true)
+                AddDB("ULDtitan", { 749, 1137, }, L["科隆加恩"], width, height, true)
+                AddDB("ULDtitan", { 750, 1131, }, L["欧尔利亚"], width, height, true)
+                AddDB("ULDtitan", { 751, 1135, }, L["霍迪尔"], width, height, true)
+                AddDB("ULDtitan", { 752, 1141, }, L["托里姆"], width, height)
+                AddDB("ULDtitan", { 753, 1133, }, L["弗蕾亚"], width, height, true)
+                AddDB("ULDtitan", { 754, 1138, }, L["米米尔隆"], width, height, true)
+                AddDB("ULDtitan", { 755, 1134, }, L["维扎克斯将军"], width, height, true)
+                AddDB("ULDtitan", { 756, 1143, }, L["尤格萨隆"], width, height)
+                AddDB("ULDtitan", { 757, 1130, }, L["奥尔加隆"], width, height)
             end
         end
     end

@@ -15,6 +15,251 @@ local player = UnitName("player")
 
 TJ.cacheCombatRole = {}
 
+-- 面板和其内部控件按历史最大用量复用；不进入 SavedVariables。
+local combatPanels = {}
+local analysisGeneration = 0
+local activeBuild
+local profileTime = debugprofilestop or function() return 0 end
+
+-- UI 创建和排序使用协程续接；一次回调最多约 2ms 或 50 个工作单位。
+local function YieldCombatWork(weight)
+    if not activeBuild then return end
+    activeBuild.units = activeBuild.units + (weight or 1)
+    if activeBuild.units >= 50 or profileTime() - activeBuild.started >= 2 then
+        coroutine.yield()
+    end
+end
+TJ.YieldCombatWork = YieldCombatWork
+
+-- 大数组用可暂停的归并排序，避免在 table.sort 的 C 调用中尝试 yield。
+local function SortCombatWork(tbl, less)
+    local n = #tbl
+    if not activeBuild or n <= 64 then return sort(tbl, less) end
+    local source, target, width = tbl, {}, 1
+    while width < n do
+        for first = 1, n, width * 2 do
+            local middle, last = min(first + width - 1, n), min(first + width * 2 - 1, n)
+            local left, right = first, middle + 1
+            for i = first, last do
+                if right > last or (left <= middle and not less(source[right], source[left])) then
+                    target[i] = source[left]; left = left + 1
+                else
+                    target[i] = source[right]; right = right + 1
+                end
+                YieldCombatWork(1 / 32)
+            end
+        end
+        source, target, width = target, source, width * 2
+    end
+    if source ~= tbl then
+        for i = 1, n do
+            tbl[i] = source[i]; YieldCombatWork(1 / 32)
+        end
+    end
+end
+TJ.SortCombatWork = SortCombatWork
+
+local function RunCombatBuild(frame, valid, work, complete)
+    local state = { frame = frame, valid = valid, complete = complete, thread = coroutine.create(work) }
+    work, complete, valid = nil, nil, nil
+    local function Cancel()
+        state.thread, state.complete, state.valid, state.frame = nil, nil, nil, nil
+    end
+    frame._combatCancelTasks = frame._combatCancelTasks or {}
+    frame._combatCancelTasks[#frame._combatCancelTasks + 1] = Cancel
+    local function Step()
+        if not state.thread then return end
+        if not state.valid() then
+            Cancel(); return
+        end
+        TJ.combatFrame = state.frame
+        state.units, state.started = 0, profileTime()
+        activeBuild = state
+        local ok, err = coroutine.resume(state.thread)
+        activeBuild = nil
+        if not ok then
+            Cancel(); error(err)
+        end
+        if coroutine.status(state.thread) == "dead" then
+            local callback = state.complete
+            Cancel()
+            if callback then callback() end
+        else
+            After(0, Step)
+        end
+    end
+    After(0, Step)
+end
+local poolScripts = { "OnEnter", "OnLeave", "OnClick", "OnHide", "OnShow", "OnUpdate",
+    "OnMouseDown", "OnMouseUp", "OnMouseWheel" }
+local poolFields = { "v", "playerText", "guidTbl", "playerTextGUID", "tooltip", "tooltipText", "frame",
+    "stackText", "ds", "name", "name2", "color", "GUID", "sourceGUID", "destGUID", "index", "Text",
+    "barTbl", "barInfo", "info", "count", "text", "damageFriendCount", "damageFriendPlayers", "ownerTitle",
+    "dpsTbl", "titleText", "titleName", "frameName", "tipsText", "CloseButton", "ToolCombatSettingButton",
+    "click", "hasClickFrame", "isMany", "_combatHoverBars", "_combatHoverDirty", "_combatHoveredBars",
+    "_combatHealthIndex", "_combatHealthCache", "_combatHealCache", "_combatDamageCache" }
+
+local function ResetCombatWidget(widget)
+    widget:Hide()
+    for _, script in ipairs(poolScripts) do
+        if widget:HasScript(script) then widget:SetScript(script, nil) end
+    end
+    widget:ClearAllPoints()
+    widget:SetScale(1)
+    widget:SetAlpha(1)
+    widget:StopMovingOrSizing()
+    widget:EnableMouse(false)
+    widget:EnableMouseWheel(false)
+    widget:SetMovable(false)
+    if widget.SetBackdrop then widget:SetBackdrop(nil) end
+    if widget.moneyFrame then
+        widget.moneyFrame:Hide()
+        widget.moneyFrame = nil
+    end
+    for _, field in ipairs(poolFields) do widget[field] = nil end
+    if widget._combatRegions then
+        for _, pool in pairs(widget._combatRegions) do
+            local used = pool.used
+            pool.used = 0
+            for i = 1, used do
+                local region = pool[i]
+                region:Hide()
+                region:ClearAllPoints()
+                if region.SetText then region:SetText("") end
+            end
+        end
+    end
+end
+
+local function AcquireCombatPanel(parent)
+    local f
+    for _, panel in ipairs(combatPanels) do
+        if not panel._combatInUse then
+            f = panel; break
+        end
+    end
+    if not f then
+        f = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+        f._combatWidgets = {}
+        combatPanels[#combatPanels + 1] = f
+    end
+    f._combatInUse = true
+    f._combatGeneration = analysisGeneration
+    f._combatOwner = f
+    f:SetParent(parent)
+    return f
+end
+
+local function AcquireCombatWidget(kind, parent, template)
+    local owner = parent._combatOwner
+    local key = kind .. ":" .. (template or "")
+    local pool = owner._combatWidgets[key]
+    if not pool then
+        pool = { used = 0 }; owner._combatWidgets[key] = pool
+    end
+    pool.used = pool.used + 1
+    local widget = pool[pool.used]
+    if not widget then
+        widget = CreateFrame(kind, nil, parent, template)
+        widget._combatOwner = owner
+        pool[pool.used] = widget
+    end
+    widget:SetParent(parent)
+    widget:SetFrameLevel(parent:GetFrameLevel() + 1)
+    widget:EnableMouse(kind == "Button" or kind == "StatusBar")
+    if widget.Enable then widget:Enable() end
+    widget:Show()
+    return widget
+end
+
+local function AcquireCombatRegion(parent, kind, layer)
+    local pools = parent._combatRegions
+    if not pools then
+        pools = {}; parent._combatRegions = pools
+    end
+    local key = kind .. ":" .. (layer or "")
+    local pool = pools[key]
+    if not pool then
+        pool = { used = 0 }; pools[key] = pool
+    end
+    pool.used = pool.used + 1
+    local region = pool[pool.used]
+    if not region then
+        region = parent["Create" .. kind](parent, nil, layer)
+        pool[pool.used] = region
+    end
+    region:SetAlpha(1)
+    if kind == "FontString" then
+        region:SetTextColor(1, 1, 1)
+        region:SetJustifyH("LEFT")
+        region:SetJustifyV("MIDDLE")
+        region:SetWordWrap(true)
+        region:SetSize(0, 0)
+    elseif kind == "Texture" then
+        region:SetTexCoord(0, 1, 0, 1)
+        region:SetVertexColor(1, 1, 1, 1)
+        region:SetDesaturated(false)
+    end
+    region:Show()
+    return region
+end
+
+-- 供 boss 自定义分析附加文字使用，与主面板一起回收。
+function TJ.CreateCombatFontString(parent, layer)
+    return AcquireCombatRegion(parent, "FontString", layer)
+end
+
+local function ReleaseCombatPanels()
+    for _, f in ipairs(combatPanels) do
+        if f._combatInUse then
+            f._combatInUse = false
+            if f._combatCancelTasks then
+                for _, cancel in ipairs(f._combatCancelTasks) do cancel() end
+                f._combatCancelTasks = nil
+            end
+            -- 首先隐藏整组，避免重置鼠标或文本时继续显示旧分析。
+            f:Hide()
+            if f._combatTextLog then
+                f._combatTextLog:Hide()
+                f._combatTextChild:SetText("")
+                f._combatTextChild:EnableMouse(false)
+                f._combatTextChild:SetHyperlinksEnabled(false)
+                f._combatTextChild:SetScript("OnHyperlinkEnter", nil)
+                f._combatTextChild:SetScript("OnHyperlinkLeave", nil)
+                f._combatTextChild:SetScript("OnEditFocusGained", nil)
+                f._combatTextChild:ClearFocus()
+            end
+            if f._combatTargetLog then
+                f._combatTargetLog:Hide()
+                f._combatTargetLines = nil
+                for _, row in ipairs(f._combatTargetRows) do
+                    row.line = nil
+                    row.time:SetText("")
+                    row.message:SetText("")
+                    row:Hide()
+                end
+            end
+            if f._combatSendButton then
+                f._combatSendButton:Hide()
+                f._combatSendButton:SetScript("OnClick", nil)
+            end
+            for _, pool in pairs(f._combatWidgets) do
+                local used = pool.used
+                pool.used = 0
+                for i = 1, used do ResetCombatWidget(pool[i]) end
+            end
+            -- boss 自定义分析创建的子控件也要隐藏；不改写其内部模板。
+            for _, child in ipairs({ f:GetChildren() }) do
+                if not child._combatOwner then child:Hide() end
+            end
+            -- 仅回收 _combatRegions；背景模板纹理不能 Hide，SetBackdrop 不会重新 Show 它们。
+            -- OnSizeChanged 也保留给背景模板更新纹理坐标。
+            ResetCombatWidget(f)
+            f:SetParent(UIParent)
+        end
+    end
+end
+
 local width = 750
 local height = 100
 local leftWidth = 120
@@ -45,16 +290,28 @@ local colorTbl = {
 萨满 #2359FF 35, 89, 255
 ]]
 
-local function GetNameByGUID(GUID)
-    local FB = TuanJian.FB
-    local bossIndex = TuanJian.bossIndex
-    local combat = TJ.GetCombatLog()
-    if combat.guid then
-        return combat.guid[GUID].name or ""
-    end
+local function GetNameByGUID(GUID, combat)
+    combat = combat or TJ.GetCombatLog()
+    local unit = combat and combat.guid and combat.guid[GUID]
+    return unit and unit.name or ""
 end
 
 -- -- 创建Bar
+local function GetHoverBars(playerText)
+    if not playerText._combatHoverBars or playerText._combatHoverDirty then
+        local bars = {}
+        for i, bar in ipairs(playerText.barTbl or {}) do
+            bars[i] = bar
+            YieldCombatWork(1 / 32)
+        end
+        SortCombatWork(bars, function(a, b)
+            return (a.v.frameLevel or 0) > (b.v.frameLevel or 0)
+        end)
+        playerText._combatHoverBars, playerText._combatHoverDirty = bars, nil
+    end
+    return playerText._combatHoverBars
+end
+
 local function CreateBar(f, v, playerText)
     local combatLog = TJ.GetCombatLog()
     local duration = combatLog.duration
@@ -62,7 +319,7 @@ local function CreateBar(f, v, playerText)
     local index = playerText.index
     local barTbl = playerText.barTbl
 
-    local bar = CreateFrame("StatusBar", nil, f, "BackdropTemplate")
+    local bar = AcquireCombatWidget("StatusBar", f, "BackdropTemplate")
     bar:SetBackdrop({
         edgeFile = "Interface/ChatFrame/ChatFrameBackground",
         edgeSize = 2,
@@ -84,7 +341,7 @@ local function CreateBar(f, v, playerText)
     bar.tooltipText = v.tooltipText
     bar.frame = f
     if v.stackCount and not v.notShowStackCount then
-        local t = bar:CreateFontString()
+        local t = AcquireCombatRegion(bar, "FontString")
         t:SetFont(BIAOGE_TEXT_FONT, 10, "OUTLINE")
         t:SetPoint("CENTER", 0, 0)
         t:SetHeight(bar:GetHeight())
@@ -92,7 +349,7 @@ local function CreateBar(f, v, playerText)
         bar.stackText = t
     end
     if v.barText then
-        local t = bar:CreateFontString()
+        local t = AcquireCombatRegion(bar, "FontString")
         t:SetFont(BIAOGE_TEXT_FONT, 11, "OUTLINE")
         t:SetPoint("LEFT", bar, "RIGHT", 0, 0)
         t:SetText(v.barText(v.spellID))
@@ -100,7 +357,7 @@ local function CreateBar(f, v, playerText)
     if not v.isdead then
         local tbl = {}
         if bar.tooltip:match("HLKwuran") then
-            local t = bar:CreateFontString()
+            local t = AcquireCombatRegion(bar, "FontString")
             t:SetFont(BIAOGE_TEXT_FONT, 12, "OUTLINE")
             t:SetPoint("LEFT", bar, "RIGHT", 2, 0)
             t:SetTextColor(1, 1, 1)
@@ -115,18 +372,19 @@ local function CreateBar(f, v, playerText)
         tinsert(playerText.barInfo, tbl)
     end
     tinsert(barTbl, bar)
+    playerText._combatHoverDirty = true
     bar:SetScript("OnEnter", function(self)
+        TJ.ResetCombatTooltipBars()
         GameTooltip:SetOwner(self, "ANCHOR_TOP", 0, 0)
         GameTooltip:ClearLines()
         local i = 0
-        local frameScale = TJ.combatFrame:GetScale()
+        local frameScale = f:GetScale()
         local uiScale, _x, _y = UIParent:GetEffectiveScale(), GetCursorPosition()
         local x, y = (_x / uiScale), (_y / uiScale)
         local offSet = .01
-        sort(barTbl, function(a, b)
-            return a.v.frameLevel > b.v.frameLevel
-        end)
-        for _, bar in ipairs(barTbl) do
+        local highlighted = {}
+        self._combatHoveredBars = highlighted
+        for _, bar in ipairs(GetHoverBars(playerText)) do
             local left = bar:GetLeft() * frameScale
             local right = bar:GetRight() * frameScale
             local top = bar:GetTop() * frameScale
@@ -137,6 +395,7 @@ local function CreateBar(f, v, playerText)
                     GameTooltip:AddLine(" ")
                 end
                 TJ.CombatFrameAddText(bar)
+                highlighted[#highlighted + 1] = bar
                 if v.tooltip == "Heal" or v.tooltip:match("health") or v.tooltip:match("died") then
                     break
                 end
@@ -145,7 +404,7 @@ local function CreateBar(f, v, playerText)
         GameTooltip:Show()
 
         if not self.ds then
-            local tex = f:CreateTexture()
+            local tex = AcquireCombatRegion(f, "Texture")
             tex:SetPoint("TOPLEFT", playerText, "TOPLEFT", 0, 0)
             tex:SetPoint("BOTTOMRIGHT", playerText, "BOTTOMRIGHT", f.lwidth, 0)
             tex:SetColorTexture(1, 1, 1, 0.2)
@@ -154,9 +413,10 @@ local function CreateBar(f, v, playerText)
         self.ds:Show()
     end)
     bar:SetScript("OnLeave", function(self)
-        for i, bar in ipairs(barTbl) do
+        for _, bar in ipairs(self._combatHoveredBars or {}) do
             bar:SetBackdropBorderColor(1, 1, 1, 0)
         end
+        self._combatHoveredBars = nil
         GameTooltip:Hide()
         if self.ds then
             self.ds:Hide()
@@ -187,7 +447,7 @@ local function CreateBar(f, v, playerText)
         end
     end
     if v.showIcon and v.icon then
-        local tex = bar:CreateTexture(nil, "OVERLAY")
+        local tex = AcquireCombatRegion(bar, "Texture", "OVERLAY")
         tex:SetPoint("LEFT")
         tex:SetSize(btHeight - 2, btHeight - 2)
         tex:SetTexture(v.icon)
@@ -196,6 +456,7 @@ local function CreateBar(f, v, playerText)
     else
         bar:SetFrameLevel(f:GetFrameLevel() + v.frameLevel)
     end
+    YieldCombatWork()
 end
 
 local function CreateMoneyFrame(parent, button)
@@ -395,14 +656,15 @@ local function CreatePlayerText(index, name, class, num)
     if class then
         r, g, b = GetClassColor(class)
     end
-    local playerText = CreateFrame("Frame", nil, f)
+    local playerText = AcquireCombatWidget("Frame", f)
+    playerText:EnableMouse(true)
     playerText:SetSize(f.leftWidth - 10, btHeight)
     playerText:SetPoint("TOPRIGHT", f, "TOPLEFT", f.leftWidth, f.topHeight - (index - 1) * btHeight)
     playerText:SetFrameLevel(TJ.combatFrame:GetFrameLevel() + 10)
     playerText.name = name
     playerText.name2 = TJ.GetIconFormName(name)
     playerText.color = { r, g, b }
-    local t = playerText:CreateFontString()
+    local t = AcquireCombatRegion(playerText, "FontString")
     t:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
     t:SetAllPoints()
     t:SetTextColor(r, g, b)
@@ -423,7 +685,7 @@ local function CreatePlayerText(index, name, class, num)
         GameTooltip:AddLine(AddTexture("RIGHT") .. L["增加奖励"], 1, 1, 1, true)
         GameTooltip:Show()
         if not self.ds then
-            local tex = f:CreateTexture()
+            local tex = AcquireCombatRegion(f, "Texture")
             tex:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0)
             tex:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", f.lwidth, 0)
             tex:SetColorTexture(1, 1, 1, 0.2)
@@ -437,10 +699,11 @@ local function CreatePlayerText(index, name, class, num)
             self.ds:Hide()
         end
     end)
+    YieldCombatWork()
     return playerText
 end
 local function CreateCountNum(playerText, num)
-    local t = playerText:CreateFontString()
+    local t = AcquireCombatRegion(playerText, "FontString")
     t:SetFont(BIAOGE_TEXT_FONT, 11, "OUTLINE")
     t:SetPoint("LEFT", playerText, "RIGHT", -2, 0)
     t:SetTextColor(unpack(playerText.color))
@@ -493,19 +756,20 @@ local function CreatePlayerFrame(playerTbl, auraTbl, func, setNum)
 
         local tbl
         if func then
-            sort(auraTbl[index], function(a, b)
+            SortCombatWork(auraTbl[index], function(a, b)
                 return a.time < b.time
             end)
             tbl = func(aura)
             if aura.durTimeMin then
                 for i = #tbl, 1, -1 do
+                    YieldCombatWork(1 / 16)
                     if tbl[i].endTime - tbl[i].startTime <= aura.durTimeMin then
                         tremove(tbl, i)
                     end
                 end
             end
         else
-            sort(auraTbl[index], function(a, b)
+            SortCombatWork(auraTbl[index], function(a, b)
                 if a.startTime and b.startTime then
                     return a.startTime < b.startTime
                 end
@@ -534,8 +798,9 @@ local function SortTbl(auraTbl)
     local newTbl = {}
     for _, aura in pairs(auraTbl) do
         tinsert(newTbl, aura)
+        YieldCombatWork(1 / 32)
     end
-    sort(newTbl, function(a, b)
+    SortCombatWork(newTbl, function(a, b)
         return a.raidIndex < b.raidIndex
     end)
     return newTbl
@@ -563,15 +828,33 @@ end
 
 -- 文本列表
 local function CreateTextLog(combatFrame, db)
+    local generation = combatFrame._combatGeneration
     After(.5, function()
-        if not (combatFrame and combatFrame:IsVisible()) then return end
-        local f, child = TJ.CreateScrollFrame(combatFrame, 350, combatFrame:GetHeight(), true)
+        if generation ~= analysisGeneration or combatFrame._combatGeneration ~= generation
+            or not combatFrame:IsVisible() then
+            return
+        end
+        local f, child = combatFrame._combatTextLog, combatFrame._combatTextChild
+        if not f then
+            f, child = TJ.CreateScrollFrame(combatFrame, 350, combatFrame:GetHeight(), true)
+            combatFrame._combatTextLog, combatFrame._combatTextChild = f, child
+        end
+        f:SetSize(350, combatFrame:GetHeight())
+        if f.scroll then
+            f.scroll:SetWidth(f:GetWidth() - 31)
+            f.scroll:SetHeight(f:GetHeight() - 9)
+            f.scroll:SetVerticalScroll(0)
+            child:SetWidth(f.scroll:GetWidth())
+            child:SetHeight(f.scroll:GetHeight())
+        end
+        f:ClearAllPoints()
+        f:Show()
         f:SetBackdrop(combatFrame:GetBackdrop())
         f:SetBackdropColor(combatFrame:GetBackdropColor())
         f:SetBackdropBorderColor(combatFrame:GetBackdropBorderColor())
         child:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
         f:SetPoint("TOPLEFT", combatFrame, "TOPRIGHT", 1, 0)
-        local canShow
+        local lines = {}
         local function GetName(guidTbl, GUID)
             local name = guidTbl[GUID].name
             if guidTbl[GUID].class then
@@ -579,7 +862,7 @@ local function CreateTextLog(combatFrame, db)
             end
             return name
         end
-        for i, bar in ipairs(db) do
+        for _, bar in ipairs(db) do
             local guidTbl = bar.guidTbl
             local v = bar.v
             local text
@@ -619,20 +902,282 @@ local function CreateTextLog(combatFrame, db)
                 -- local text = format(L["%s 死亡"], destName)
             end
             if text then
-                canShow = true
-                child:Insert(format('%s %s%s', TJ.STC_dis(TJ.SecondsToTime(v.endTime, 2)),
-                    text, (i ~= #db and "\n" or "")))
+                lines[#lines + 1] = format('%s %s', TJ.STC_dis(TJ.SecondsToTime(v.endTime, 2)), text)
             end
         end
-        if not canShow then
+        child:SetText(table.concat(lines, "\n"))
+        if #lines == 0 then
             f:Hide()
         end
     end)
 end
 
+-- 按目标 GUID 分组的伤害复盘；只引用原始事件，不另存战斗日志。
+local function TargetDamageLess(a, b)
+    if a.time ~= b.time then return a.time < b.time end
+    return (a.event.i or 0) < (b.event.i or 0)
+end
+
+local function TargetDamageOwner(context, guid)
+    local seen = {}
+    while guid and context.log.guid[guid] and context.log.guid[guid].ownerGUID and not seen[guid] do
+        seen[guid] = true
+        guid = context.log.guid[guid].ownerGUID
+    end
+    return guid
+end
+
+local function TargetDamagePlayer(context, guid, roster)
+    local owner = TargetDamageOwner(context, guid)
+    local unit = context.log.guid[owner] or {}
+    local name = unit.name or UNKNOWN
+    local member = roster[name]
+    local class = unit.class or (member and member.class)
+    local icon = member and TJ.talentIcon[class] and TJ.talentIcon[class][member.talent]
+    if not icon and member then icon = member.combatRole end
+    local r, g, b, hex = 1, 1, 1, "ffffffff"
+    if class then r, g, b, hex = GetClassColor(class) end
+    name = (icon and AddTexture(icon) or "") .. "|c" .. hex .. name .. "|r"
+    if guid ~= owner then
+        name = name .. format(L["（宠物：%s）"], (context.log.guid[guid] or {}).name or UNKNOWN)
+    end
+    return name, r, g, b
+end
+
+local function TargetDamageText(record, context, roster)
+    local v = record.event
+    local centiseconds = floor(record.time * 100 + .5)
+    local time = format("%d:%02d.%02d ", floor(centiseconds / 6000),
+        floor(centiseconds / 100) % 60, centiseconds % 100)
+    if record.subevent == "UNIT_DIED" then
+        return time .. L["坍缩星死亡"], time, L["坍缩星死亡"]
+    end
+    local name = TargetDamagePlayer(context, context:GetGUID(v[4]), roster)
+    local swing = record.subevent == "SWING_DAMAGE"
+    local amountIndex = swing and 12 or 15
+    local amount = max(0, (v[amountIndex] or 0) - max(0, v[amountIndex + 1] or 0))
+    local skill = AddTexture("Interface\\Icons\\ability_steelmelee") .. "[" .. L["平砍"] .. "]"
+    if not swing then
+        local id = v[12]
+        skill = AddTexture(context:GetSpellIcon(id)) ..
+            (C_Spell.GetSpellLink(id) or ("[" .. (v[13] or UNKNOWN) .. "]"))
+    end
+    local text = format(L["%s的%s造成%s点伤害"], name, skill, format("%d", amount))
+    if record.subevent == "SPELL_PERIODIC_DAMAGE" then text = text .. L["（持续伤害）"] end
+    if (v[amountIndex + 1] or 0) > 0 then
+        text = text .. "|cffff0000" .. format(L["（过量：%s）"], format("%d", v[amountIndex + 1])) .. "|r"
+    end
+    return time .. text, time, text
+end
+
+-- 只创建可见行，时间和正文使用独立文本，避免长日志创建大量控件。
+local targetDamageLineHeight = 16
+local function UpdateTargetDamageLines(f)
+    local scroll, child = f._combatTargetLog, f._combatTargetChild
+    local lines = f._combatTargetLines or {}
+    local lineHeight, timeWidth = targetDamageLineHeight, 70
+    local first = floor(scroll.scroll:GetVerticalScroll() / lineHeight) + 1
+    local count = math.ceil(scroll.scroll:GetHeight() / lineHeight) + 1
+    for i = 1, count do
+        local row = f._combatTargetRows[i]
+        if not row then
+            row = CreateFrame("Frame", nil, child)
+            row:SetHyperlinksEnabled(true)
+            row:EnableMouse(true)
+            row.time = row:CreateFontString(nil, "OVERLAY")
+            row.message = row:CreateFontString(nil, "OVERLAY")
+            for _, text in ipairs({ row.time, row.message }) do
+                text:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
+                text:SetJustifyH("LEFT")
+                text:SetWordWrap(false)
+            end
+            row.time:SetPoint("LEFT")
+            row.time:SetSize(timeWidth, lineHeight)
+            row.time:SetTextColor(.6, .6, .6)
+            row.message:SetPoint("LEFT", row, "LEFT", timeWidth, 0)
+            row:SetScript("OnHyperlinkEnter", function(self, link)
+                GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+                GameTooltip:SetHyperlink(link)
+                GameTooltip:Show()
+            end)
+            row:SetScript("OnHyperlinkLeave", GameTooltip_Hide)
+            row:SetScript("OnLeave", GameTooltip_Hide)
+            f._combatTargetRows[i] = row
+        end
+        local index = first + i - 1
+        row.line = lines[index]
+        if row.line then
+            row:SetSize(child:GetWidth(), lineHeight)
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", child, "TOPLEFT", 0, -(index - 1) * lineHeight)
+            row.message:SetSize(max(1, child:GetWidth() - timeWidth), lineHeight)
+            row.time:SetText(row.line.time)
+            row.message:SetText(row.line.text)
+            row:Show()
+        else
+            row:Hide()
+        end
+    end
+    for i = count + 1, #f._combatTargetRows do f._combatTargetRows[i]:Hide() end
+end
+
+local function CreateTargetDamageTimeline(f, targets, context, valid)
+    local rows, roster = {}, {}
+    for _, member in ipairs(context.log.raidMember or {}) do roster[member.name] = member end
+    for _, target in pairs(targets) do
+        SortCombatWork(target.records, TargetDamageLess)
+        rows[#rows + 1] = target
+        YieldCombatWork()
+    end
+    SortCombatWork(rows, function(a, b)
+        if a.firstTime ~= b.firstTime then return a.firstTime < b.firstTime end
+        return a.guid < b.guid
+    end)
+    local rowHeight, detailHeight = btHeight, 300
+    f:SetHeight(-f.topHeight + #rows * rowHeight + 10)
+    local detail = f._combatTargetDetail
+    if not detail then
+        detail = CreateFrame("Frame", nil, f, "BackdropTemplate")
+        f._combatTargetDetail = detail
+        detail:SetBackdrop({
+            bgFile = "Interface/ChatFrame/ChatFrameBackground",
+            edgeFile = "Interface/ChatFrame/ChatFrameBackground",
+            edgeSize = 1,
+        })
+        detail:SetBackdropColor(0, 0, 0, .9)
+        detail:SetBackdropBorderColor(.8, .8, .8, 1)
+        detail.heading = detail:CreateFontString(nil, "OVERLAY")
+        detail.heading:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
+        detail.heading:SetPoint("TOPLEFT", 10, -8)
+        detail.heading:SetTextColor(1, 1, 1)
+    end
+    detail:ClearAllPoints()
+    detail:SetPoint("BOTTOMLEFT", f, "TOPLEFT", 0, 5)
+    detail:SetSize(f:GetWidth(), detailHeight + 32)
+    detail:SetFrameLevel(f:GetFrameLevel() + 1)
+    detail:Hide()
+    local heading = detail.heading
+
+    local scroll, child = f._combatTargetLog, f._combatTargetChild
+    if not scroll then
+        scroll, child = TJ.CreateScrollFrame(detail, f:GetWidth() - 20, detailHeight)
+        f._combatTargetLog, f._combatTargetChild = scroll, child
+        f._combatTargetRows = {}
+        scroll.scroll:HookScript("OnVerticalScroll", function() UpdateTargetDamageLines(f) end)
+    end
+    scroll:SetParent(detail)
+    scroll:SetFrameLevel(detail:GetFrameLevel() + 1)
+    scroll:ClearAllPoints()
+    scroll:SetPoint("TOPLEFT", detail, "TOPLEFT", 10, -27)
+    scroll:SetSize(f:GetWidth() - 20, detailHeight)
+    scroll:SetBackdrop({
+        bgFile = "Interface/ChatFrame/ChatFrameBackground",
+        edgeFile = "Interface/ChatFrame/ChatFrameBackground",
+        edgeSize = 1,
+    })
+    scroll:SetBackdropColor(0, 0, 0, .8)
+    scroll:SetBackdropBorderColor(.5, .5, .5, 1)
+    scroll.scroll:SetSize(scroll:GetWidth() - 31, detailHeight - 9)
+    child:SetWidth(scroll.scroll:GetWidth())
+    child:SetHeight(scroll.scroll:GetHeight())
+    f._combatTargetLines = {}
+    scroll.scroll:SetVerticalScroll(0)
+    UpdateTargetDamageLines(f)
+    scroll:Show()
+    local selection = 0
+    local highlights = {}
+    local function SelectTarget(target, index)
+        if not valid() then return end
+        -- 点击目标即固定面板，否则移出分析入口时面板会消失。
+        if not f.click then TJ.SetCombatFrameIsClick(f) end
+        detail:Show()
+        selection = selection + 1
+        local request = selection
+        for i, highlight in ipairs(highlights) do highlight:SetShown(i == index) end
+        heading:SetText(TJ.GetRTIcon(target.raidTarget) .. format(L["坍缩星%d 伤害记录"], index))
+        f._combatTargetLines = { { time = "", text = L["正在整理伤害记录…"] } }
+        scroll.scroll:SetVerticalScroll(0)
+        UpdateTargetDamageLines(f)
+        RunCombatBuild(f, function() return valid() and selection == request end, function()
+            local lines = {}
+            for _, record in ipairs(target.records) do
+                local _, time, text = TargetDamageText(record, context, roster)
+                lines[#lines + 1] = { time = time, text = text }
+                YieldCombatWork()
+            end
+            if valid() and selection == request then
+                f._combatTargetLines = lines
+                child:SetHeight(max(scroll.scroll:GetHeight(), #lines * targetDamageLineHeight))
+                scroll.scroll:UpdateScrollChildRect()
+                scroll.scroll:SetVerticalScroll(max(0, scroll.scroll:GetVerticalScrollRange()))
+                UpdateTargetDamageLines(f)
+            end
+        end)
+    end
+    for index, target in ipairs(rows) do
+        local row = AcquireCombatWidget("Button", f)
+        row:SetSize(f:GetWidth() - 20, rowHeight)
+        row:SetPoint("TOPLEFT", 10, f.topHeight - (index - 1) * rowHeight)
+        local label = AcquireCombatRegion(row, "FontString")
+        label:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
+        label:SetPoint("LEFT")
+        label:SetText(TJ.GetRTIcon(target.raidTarget) .. format(L["坍缩星%d"], index))
+        label:SetTextColor(1, .82, 0)
+        local highlight = AcquireCombatRegion(row, "Texture", "BACKGROUND")
+        highlight:SetAllPoints()
+        highlight:SetColorTexture(1, 1, 1, .12)
+        highlight:Hide()
+        highlights[index] = highlight
+        local function Select() SelectTarget(target, index) end
+        row:SetScript("OnClick", Select)
+        -- 同一玩家同一像素列合并成一个命中区域；明细始终保留全部事件。
+        local buckets, ordered = {}, {}
+        local duration = max(context.log.duration, .01)
+        for _, record in ipairs(target.records) do
+            local x = min(f.lwidth - 4, max(0, f.lwidth * record.time / duration))
+            local owner = TargetDamageOwner(context, context:GetGUID(record.event[4]))
+            local key = record.subevent == "UNIT_DIED" and "death" or
+                tostring(floor(x / 4)) .. ":" .. tostring(owner)
+            local bucket = buckets[key]
+            if not bucket then
+                bucket = { x = x, records = {}, death = record.subevent == "UNIT_DIED" }
+                buckets[key] = bucket
+                ordered[#ordered + 1] = bucket
+            end
+            bucket.records[#bucket.records + 1] = record
+            YieldCombatWork(1 / 16)
+        end
+        for _, bucket in ipairs(ordered) do
+            local marker = AcquireCombatWidget("Button", row)
+            marker:SetSize(bucket.death and 7 or 4, btHeight - 4)
+            marker:SetPoint("LEFT", row, "LEFT", f.leftWidth - 10 + bucket.x, 0)
+            local tex = AcquireCombatRegion(marker, "Texture")
+            tex:SetAllPoints()
+            local _, r, g, b = TargetDamagePlayer(context, context:GetGUID(bucket.records[1].event[4]), roster)
+            if bucket.death then r, g, b = 1, .3, 0 end
+            tex:SetColorTexture(r, g, b, .9)
+            marker:SetScript("OnClick", Select)
+            marker:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:ClearLines()
+                GameTooltip:AddLine(label:GetText(), 1, .82, 0)
+                for i = 1, min(#bucket.records, 8) do
+                    GameTooltip:AddLine(TargetDamageText(bucket.records[i], context, roster), 1, .82, 0)
+                end
+                GameTooltip:AddLine(L["点击查看该星的全部伤害记录"], .7, .7, .7)
+                GameTooltip:Show()
+            end)
+            marker:SetScript("OnLeave", GameTooltip_Hide)
+            YieldCombatWork()
+        end
+    end
+    heading:SetText(L["点击坍缩星，查看逐条伤害记录"])
+end
+
 -- 通报
 local function UpdateSendButtonPoint()
     TJ.combatFrameSendButton:SetParent(TJ.combatFrame)
+    TJ.combatFrameSendButton:ClearAllPoints()
     TJ.combatFrameSendButton:SetPoint("BOTTOMRIGHT", TJ.combatFrame, "BOTTOMRIGHT", -10, 5)
 end
 local function CreateSendButton(info, playerTbl, bt, isRefresh)
@@ -642,10 +1187,16 @@ local function CreateSendButton(info, playerTbl, bt, isRefresh)
     local f = TJ.combatFrame
     local combatLog = TJ.GetCombatLog()
     local guidTbl = combatLog.guid
-    local button = TJ.CreateButton(f)
+    local button = f._combatSendButton
+    if not button then
+        button = TJ.CreateButton(f)
+        f._combatSendButton = button
+    end
+    button:Enable()
+    button:Show()
     button:SetSize(100, 25)
-    button:SetPoint("BOTTOMRIGHT", -10, 5)
     TJ.combatFrameSendButton = button
+    UpdateSendButtonPoint()
     if info.canSend == "HLKwuran" then
         button:SetSize(180, 25)
         button:SetText(L["通报火箭靴反应时间"])
@@ -658,8 +1209,9 @@ local function CreateSendButton(info, playerTbl, bt, isRefresh)
             return
         end
         self:Disable()
+        local generation = f._combatGeneration
         After(2, function()
-            if self then
+            if f._combatInUse and generation == analysisGeneration and f._combatGeneration == generation then
                 self:Enable()
             end
         end)
@@ -743,20 +1295,21 @@ end
 -- 伤害排名
 local function CreateDpsBar(v, i, maxDamage)
     local f = TJ.combatFrame
+    local combatLog = TJ.GetCombatLog()
     local r, g, b = GetClassColor(v.class)
-    local bar = CreateFrame("StatusBar", nil, f, "BackdropTemplate")
+    local bar = AcquireCombatWidget("StatusBar", f, "BackdropTemplate")
     bar:SetPoint("TOPLEFT", f, "TOPLEFT",
         f.leftWidth,
         f.topHeight - (i - 1) * btHeight - 2)
     bar:SetPoint("BOTTOMRIGHT", f, "TOPLEFT",
-        f.leftWidth + f.lwidth * (v.damage / maxDamage),
+        f.leftWidth + f.lwidth * (maxDamage > 0 and v.damage / maxDamage or 0),
         f.topHeight - btHeight - (i - 1) * btHeight + 2)
     bar:SetStatusBarTexture("Interface/ChatFrame/ChatFrameBackground")
     bar:SetStatusBarColor(r, g, b, .8)
 
     if v.petDamage and v.petDamage > 0 then
         local parent = bar
-        local bar = CreateFrame("StatusBar", nil, parent, "BackdropTemplate")
+        local bar = AcquireCombatWidget("StatusBar", parent, "BackdropTemplate")
         bar:SetSize(v.petDamage / v.damage * parent:GetWidth(), parent:GetHeight())
         bar:SetPoint("RIGHT")
         bar:SetStatusBarTexture("Interface/ChatFrame/ChatFrameBackground")
@@ -765,7 +1318,7 @@ local function CreateDpsBar(v, i, maxDamage)
         bar:SetFrameLevel(parent:GetFrameLevel())
     end
 
-    local damageText = bar:CreateFontString()
+    local damageText = AcquireCombatRegion(bar, "FontString")
     damageText:SetFont(BIAOGE_TEXT_FONT, 12, "OUTLINE")
     damageText:SetPoint("LEFT", 2, 0)
     damageText:SetText(TJ.FormatNumber(v.damage))
@@ -773,6 +1326,7 @@ local function CreateDpsBar(v, i, maxDamage)
 
     bar:SetScript("OnEnter", function(self)
         if not v.detail then return end
+        TJ.ResetCombatTooltipBars()
         local newTbl = {}
         for _, vv in pairs(v.detail) do
             tinsert(newTbl, vv)
@@ -786,7 +1340,7 @@ local function CreateDpsBar(v, i, maxDamage)
         for _, vv in ipairs(newTbl) do
             local petName = ""
             if vv.petGUID then
-                petName = GetNameByGUID(vv.petGUID)
+                petName = GetNameByGUID(vv.petGUID, combatLog)
                 if petName ~= "" then
                     petName = format(L["（%s）"], petName)
                 end
@@ -827,9 +1381,6 @@ local function CreateDpsBar(v, i, maxDamage)
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine(L["目标："], 1, 1, 1, true)
 
-            local FB = TuanJian.FB
-            local bossIndex = TuanJian.bossIndex
-            local combatLog = TJ.GetCombatLog()
             for _, vv in pairs(newTbl) do
                 local r, g, b = 1, .82, 0
                 if combatLog.guid[vv.destGUID].class then
@@ -849,8 +1400,9 @@ local function CreateDpsBar(v, i, maxDamage)
     bar:SetScript("OnMouseDown", function(self)
         TJ.combatFrameMany[1]:StartMoving()
     end)
+    YieldCombatWork()
 end
-local function GetDamage(infoType, tbl, v, subevent, GUID, isSpell, petGUID, destGUID, class)
+local function GetDamage(infoType, tbl, v, subevent, GUID, isSpell, petGUID, destGUID, class, combatLog, context)
     local num, spellID, spellName, icon
     local amount = 0
     tbl[GUID] = tbl[GUID] or {
@@ -865,7 +1417,8 @@ local function GetDamage(infoType, tbl, v, subevent, GUID, isSpell, petGUID, des
         num = 15
         spellID = v[num - 3]
         spellName = v[num - 2]
-        icon = C_Spell.GetSpellTexture(spellID)
+        local detail = tbl[GUID].detail[spellID]
+        icon = detail and detail.icon or context:GetSpellIcon(spellID)
     else
         num = 12
         spellID = petGUID or GUID
@@ -899,12 +1452,12 @@ local function GetDamage(infoType, tbl, v, subevent, GUID, isSpell, petGUID, des
     tbl[GUID].detail[spellID].damage = tbl[GUID].detail[spellID].damage + amount
     tbl[GUID].damage = tbl[GUID].damage + amount
     if destGUID then
-        local destName = GetNameByGUID(destGUID)
+        local destName = GetNameByGUID(destGUID, combatLog)
         tbl[GUID].destUnit[destName] = tbl[GUID].destUnit[destName] or { destGUID = destGUID, damage = 0 }
         tbl[GUID].destUnit[destName].damage = tbl[GUID].destUnit[destName].damage + amount
     end
     if petGUID then
-        local petName = GetNameByGUID(petGUID)
+        local petName = GetNameByGUID(petGUID, combatLog)
         tbl[GUID].petDetail[petName] = (tbl[GUID].petDetail[petName] or 0) + amount
         tbl[GUID].petDamage = tbl[GUID].petDamage + amount
     end
@@ -925,6 +1478,7 @@ end
 local function UpdateDropDownPoint()
     TJ.combatFrameDropDown:SetParent(TJ.combatFrame)
     TJ.combatFrameDropDown:SetPoint("BOTTOM", TJ.combatFrame, "BOTTOM", 0, 0)
+    TJ.combatFrameDropDown:Show()
 end
 local function CreateDropDown(dropDownInfo, isRefresh)
     if not TJ.combatFrameDropDown then
@@ -1024,17 +1578,17 @@ local function CreateToolCombatSettingButton(f, bt)
     -- 可能不是 manyIndex == 1。过滤按钮应挂在实际生成的第一个面板上。
     if TJ.combatFrameMany[1] ~= f then return end
 
-    local button = CreateFrame("Button", nil, f)
+    local button = AcquireCombatWidget("Button", f)
     button:SetSize(25, 25)
     button:SetPoint("TOPRIGHT", f, "TOPRIGHT", -25, 1)
     button.ownerTitle = bt
 
-    local tex = button:CreateTexture(nil, "ARTWORK")
+    local tex = AcquireCombatRegion(button, "Texture", "ARTWORK")
     tex:SetPoint('CENTER')
     tex:SetSize(18, 18)
     tex:SetTexture("Interface\\Buttons\\UI-OptionsButton")
     button:SetNormalTexture(tex)
-    local tex = button:CreateTexture(nil, "ARTWORK")
+    local tex = AcquireCombatRegion(button, "Texture", "ARTWORK")
     tex:SetPoint('CENTER')
     tex:SetSize(18, 18)
     tex:SetTexture("Interface\\Buttons\\UI-OptionsButton")
@@ -1101,7 +1655,7 @@ local function CreateToolCombatSettingButton(f, bt)
             local info = LibBG:UIDropDownMenu_CreateInfo()
             info.text = CANCEL
             info.notCheckable = true
-            info.func =LibBG.CloseDropDownMenus
+            info.func = LibBG.CloseDropDownMenus
             LibBG:UIDropDownMenu_AddButton(info)
         end)
     end
@@ -1155,98 +1709,157 @@ function TJ.SetCombatFrameIsClick(f)
     end
 end
 
-local function ShowDamageFriendCount(playerTbl, info, infoType)
-    local batch = 5000
-    local barIndex = 1
-    local startIndex = 1
-    local eventIndex = 1
+local function ShowDamageFriendCount(playerTbl, info, infoType, context)
+    local f = TJ.combatFrame
+    local generation = f._combatGeneration
+    local bars, sources, lists, events = {}, {}, {}, {}
+    local event = TJ.GetCombatLogEvent()
+    local swingKey, unknownSpell = {}, {}
+    local offset = infoType == "damageFriend" and offsetTime2 or offsetTime
+    local active = true
+    local eventIndex, recordIndex, sortIndex, barIndex = 1, 1, 1, 1
+    local stage = "build"
+    local queryLists, queryIndex, queryRecord, count, players
 
-    local bars = {}
-    for i, playerText in ipairs(playerTbl) do
-        for i, bar in ipairs(playerText.barTbl) do
+    for _, playerText in ipairs(playerTbl) do
+        for _, bar in ipairs(playerText.barTbl) do
             if bar.tooltip:match(infoType) then
-                tinsert(bars, bar)
+                bars[#bars + 1] = bar
+                if bar.v.sourceGUID then sources[bar.v.sourceGUID] = {} end
             end
         end
     end
-
-    local event = TJ.GetCombatLogEvent()
-    local events = {}
+    if #bars == 0 then return end
     for subevent in pairs(event) do
         if TJ.CombatFiterEvent("damage", subevent, info[infoType]) then
-            tinsert(events, subevent)
+            events[#events + 1] = { name = subevent, swing = subevent:match("^SWING_") ~= nil }
         end
     end
 
+    local function Cancel()
+        active = false
+        bars, sources, lists, events, event, queryLists, players, context = nil, nil, nil, nil, nil, nil, nil, nil
+    end
+    f._combatCancelTasks = f._combatCancelTasks or {}
+    f._combatCancelTasks[#f._combatCancelTasks + 1] = Cancel
+
+    local function LowerBound(list, time)
+        local lo, hi = 1, #list + 1
+        while lo < hi do
+            local mid = math.floor((lo + hi) / 2)
+            if list[mid][1] < time then lo = mid + 1 else hi = mid end
+        end
+        return lo
+    end
     local function Process()
-        local bar = bars[barIndex]
-        if not bar or not bar:IsVisible() then
+        if not active then return end
+        if generation ~= analysisGeneration or f._combatGeneration ~= generation or not f:IsVisible() then
+            Cancel()
             return
         end
-        bar.damageFriendCount = bar.damageFriendCount or 0
-        bar.damageFriendPlayers = bar.damageFriendPlayers or {}
-        local subevent = events[eventIndex]
-        if subevent then
-            for i = startIndex, batch + startIndex - 1 do
-                local v = event[subevent] and event[subevent][i]
-                if v then
-                    if infoType == "damageFriend" then
-                        if math.abs(v[1] - bar.v.endTime) <= offsetTime2 and v.hp then
-                            local sourceGUID = GetGUID(v[4])
-                            local destGUID = GetGUID(v[8])
-                            if sourceGUID == bar.v.sourceGUID and sourceGUID ~= destGUID then
-                                local sourceNpcType = strsplit("-", sourceGUID)
-                                if sourceNpcType == "Player" then
-                                    local destNpcType = strsplit("-", destGUID)
-                                    if destNpcType == "Player" then
-                                        if subevent:match("^SWING_") or
-                                            not bar.v.spellID or bar.v.spellID and v[12] == bar.v.spellID then
-                                            bar.damageFriendCount = bar.damageFriendCount + 1
-                                        end
-                                    end
+        local remaining = 1000
+        while remaining > 0 do
+            if stage == "build" then
+                local descriptor = events[eventIndex]
+                if not descriptor then
+                    stage = "sort"
+                else
+                    local v = event[descriptor.name][recordIndex]
+                    if not v then
+                        eventIndex, recordIndex = eventIndex + 1, 1
+                    else
+                        recordIndex = recordIndex + 1
+                        remaining = remaining - 1
+                        local sourceGUID = context:GetGUID(v[4])
+                        local buckets = sources[sourceGUID]
+                        if buckets then
+                            local destGUID = context:GetGUID(v[8])
+                            local dest = context:GetUnit(destGUID)
+                            local valid = dest.npcType == "Player"
+                            if infoType == "damageFriend" then
+                                valid = valid and v.hp and sourceGUID ~= destGUID
+                                    and context:GetUnit(sourceGUID).npcType == "Player"
+                            end
+                            if valid then
+                                local key = descriptor.swing and swingKey or (v[12] or unknownSpell)
+                                local list = buckets[key]
+                                if not list then
+                                    list = {}; buckets[key] = list; lists[#lists + 1] = list
                                 end
+                                if #list > 0 and list[#list][1] > v[1] then list.unsorted = true end
+                                list[#list + 1] = v
                             end
                         end
-                    elseif infoType == "beDamage2" then
-                        if math.abs(v[1] - bar.v.endTime) <= offsetTime then
-                            local sourceGUID = GetGUID(v[4])
-                            if sourceGUID == bar.v.sourceGUID then
-                                local destGUID = GetGUID(v[8])
-                                local destNpcType = strsplit("-", destGUID)
-                                if destNpcType == "Player" then
-                                    if subevent:match("^SWING_") or
-                                        not bar.v.spellID or bar.v.spellID and v[12] == bar.v.spellID then
-                                        bar.damageFriendPlayers[destGUID] = true
-                                    end
+                    end
+                end
+            elseif stage == "sort" then
+                local list = lists[sortIndex]
+                if not list then
+                    stage = "query"
+                    -- 查询只保留需要的事件引用，不再持有整个事件表。
+                    event, events, lists = nil, nil, nil
+                else
+                    sortIndex = sortIndex + 1
+                    if list.unsorted then
+                        sort(list, function(a, b) return a[1] < b[1] end)
+                        list.unsorted = nil
+                        break -- 一次回调最多排序一个桶。
+                    end
+                end
+            else
+                local bar = bars[barIndex]
+                if not bar then
+                    Cancel(); return
+                end
+                if not bar:IsVisible() then
+                    Cancel(); return
+                end
+                if not queryLists then
+                    queryLists, queryIndex, count, players = {}, 1, 0, {}
+                    local buckets = sources[bar.v.sourceGUID]
+                    if buckets then
+                        if bar.v.spellID then
+                            if buckets[swingKey] then queryLists[#queryLists + 1] = buckets[swingKey] end
+                            if buckets[bar.v.spellID] then queryLists[#queryLists + 1] = buckets[bar.v.spellID] end
+                        else
+                            for _, list in pairs(buckets) do queryLists[#queryLists + 1] = list end
+                        end
+                    end
+                end
+                local list = queryLists[queryIndex]
+                if not list then
+                    bar.damageFriendCount = count
+                    bar.damageFriendPlayers = players
+                    local text = AcquireCombatRegion(bar, "FontString")
+                    text:SetFont(BIAOGE_TEXT_FONT, 12, "OUTLINE")
+                    text:SetPoint("RIGHT", bar, "LEFT", 1, 0)
+                    text:SetHeight(bar:GetHeight())
+                    text:SetText(count)
+                    barIndex = barIndex + 1
+                    queryLists, queryRecord = nil, nil
+                    remaining = remaining - 1
+                else
+                    -- 留出浮点边界余量，再用原来的 abs 判断，保持计数一致。
+                    queryRecord = queryRecord or LowerBound(list, bar.v.endTime - offset - 0.000001)
+                    local v = list[queryRecord]
+                    if not v or v[1] > bar.v.endTime + offset + 0.000001 then
+                        queryIndex, queryRecord = queryIndex + 1, nil
+                    else
+                        queryRecord = queryRecord + 1
+                        remaining = remaining - 1
+                        if math.abs(v[1] - bar.v.endTime) <= offset then
+                            if infoType == "damageFriend" then
+                                count = count + 1
+                            else
+                                local destGUID = context:GetGUID(v[8])
+                                if not players[destGUID] then
+                                    players[destGUID] = true; count = count + 1
                                 end
                             end
                         end
                     end
-                    startIndex = startIndex + 1
-                else
-                    -- 当前事件已全部处理，处理下一个事件
-                    eventIndex = eventIndex + 1
-                    startIndex = 1
-                    break
                 end
             end
-        else
-            -- 全部事件已经处理完成
-            if next(bar.damageFriendPlayers) then
-                for k, v in pairs(bar.damageFriendPlayers) do
-                    bar.damageFriendCount = bar.damageFriendCount + 1
-                end
-            end
-
-            barIndex = barIndex + 1
-            startIndex = 1
-            eventIndex = 1
-
-            local t = bar:CreateFontString()
-            t:SetFont(BIAOGE_TEXT_FONT, 12, "OUTLINE")
-            t:SetPoint("RIGHT", bar, "LEFT", 1, 0)
-            t:SetHeight(bar:GetHeight())
-            t:SetText(bar.damageFriendCount)
         end
         After(0, Process)
     end
@@ -1259,6 +1872,7 @@ local function SSpowerSpell(playerTbl)
     for _, playerText in ipairs(playerTbl) do
         local lastBar
         for i, bar in ipairs(playerText.barTbl) do
+            YieldCombatWork(1 / 16)
             if not maxNum then
                 maxNum = bar.v.stackCount
             end
@@ -1277,16 +1891,14 @@ TJ.combatFrameProcessors = {}
 TJ.combatFrameLastArgs = {}
 
 function TJ.ReSetCombatFrame()
+    analysisGeneration = analysisGeneration + 1
+    ReleaseCombatPanels()
     wipe(TJ.combatFrameMany)
     wipe(TJ.combatFrameProcessors)
 end
 
 local batch = 1000
 local batch2 = 1000
-local startIndex = 1
-local eventIndex = 1
-local infoIndex = 1
-local infos = {}
 
 function TJ.CreateCombatFrame(...)
     local bt, processorKey, info, updateTitleColor, manyIndex, allInfo, click, isRefresh = ...
@@ -1300,10 +1912,9 @@ function TJ.CreateCombatFrame(...)
         return
     end
     TJ.combatFrameLastArgs = { ... }
-    startIndex = 1
-    eventIndex = 1
-    infoIndex = 1
-    wipe(infos)
+    local startIndex, eventIndex, infoIndex = 1, 1, 1
+    local infos = {}
+    local generation = analysisGeneration
     wipe(TJ.cacheCombatRole)
     local FB = TuanJian.FB
     local bossIndex = TuanJian.bossIndex
@@ -1318,6 +1929,8 @@ function TJ.CreateCombatFrame(...)
         end
         return
     end
+    local context = TJ.CreateCombatAnalysisContext(combatLog, TJ.combatFrameDropDownPahse)
+    local function GetGUID(index) return context:GetGUID(index) end
     local d = 60 * 5
     local addWidth = max((duration - d), 0)
     local width = width + addWidth
@@ -1336,7 +1949,7 @@ function TJ.CreateCombatFrame(...)
         end
     end
 
-    local f = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    local f = not updateTitleColor and AcquireCombatPanel(parent) or {}
     if not updateTitleColor then
         f:SetBackdrop({
             bgFile = "Interface/ChatFrame/ChatFrameBackground",
@@ -1382,12 +1995,11 @@ function TJ.CreateCombatFrame(...)
 
     if isRefresh then
         UpdateDropDownPoint()
-        UpdateSendButtonPoint()
     end
 
     -- 标题和关闭按钮
     if not updateTitleColor then
-        local t = f:CreateFontString()
+        local t = AcquireCombatRegion(f, "FontString")
         t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")
         t:SetPoint("TOP", 0, -5)
         t:SetTextColor(1, 1, 1)
@@ -1405,9 +2017,9 @@ function TJ.CreateCombatFrame(...)
             f.titleName = bt.name
         end
         f.frameName = bt.name
-        f.titleText=t
+        f.titleText = t
 
-        f.CloseButton = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+        f.CloseButton = AcquireCombatWidget("Button", f, "UIPanelCloseButton")
         f.CloseButton:SetPoint("TOPRIGHT", f, "TOPRIGHT", 5, 5)
         f.CloseButton:SetFrameLevel(f:GetFrameLevel() + 1)
         f.CloseButton:SetScript("OnClick", function(self)
@@ -1422,7 +2034,7 @@ function TJ.CreateCombatFrame(...)
 
         if not isRefresh then
             f.CloseButton:Hide()
-            local t = f:CreateFontString()
+            local t = AcquireCombatRegion(f, "FontString")
             t:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
             t:SetPoint("TOPRIGHT", -5, -5)
             t:SetTextColor(1, .82, 0)
@@ -1433,31 +2045,31 @@ function TJ.CreateCombatFrame(...)
 
     -- 时间轴
     if not updateTitleColor and not info.dps and not info.hps and not info.dps_friend then
-        local l = f:CreateLine()
+        local l = AcquireCombatRegion(f, "Line")
         l:SetColorTexture(.5, .5, .5)
         l:SetStartPoint("TOPLEFT", leftWidth, topHeight)
         l:SetEndPoint("TOPRIGHT", rightWidth, topHeight)
         l:SetThickness(1.5)
 
-        local l1 = f:CreateLine()
+        local l1 = AcquireCombatRegion(f, "Line")
         l1:SetColorTexture(.5, .5, .5)
         l1:SetStartPoint("TOPLEFT", leftWidth, topHeight + 5)
         l1:SetEndPoint("TOPLEFT", leftWidth, topHeight)
         l1:SetThickness(1.5)
 
-        local t = f:CreateFontString(nil, "OVERLAY")
+        local t = AcquireCombatRegion(f, "FontString", "OVERLAY")
         t:SetFont(BIAOGE_TEXT_FONT, 12, "OUTLINE")
         t:SetPoint("BOTTOM", l1, "TOP", 0, 0)
         t:SetTextColor(1, 0.82, 0)
         t:SetText("0:00")
 
-        local l2 = f:CreateLine()
+        local l2 = AcquireCombatRegion(f, "Line")
         l2:SetColorTexture(.5, .5, .5)
         l2:SetStartPoint("TOPLEFT", leftWidth + lwidth, topHeight + 5)
         l2:SetEndPoint("TOPLEFT", leftWidth + lwidth, topHeight)
         l2:SetThickness(1.5)
 
-        local t = f:CreateFontString(nil, "OVERLAY")
+        local t = AcquireCombatRegion(f, "FontString", "OVERLAY")
         t:SetFont(BIAOGE_TEXT_FONT, 12, "OUTLINE")
         t:SetPoint("BOTTOM", l2, "TOP", 0, 0)
         t:SetTextColor(1, 0.82, 0)
@@ -1467,13 +2079,13 @@ function TJ.CreateCombatFrame(...)
         for _, v in pairs(combatLog.otherTime) do
             if type(v) == "table" and v.time and v.time <= duration + 1 then
                 local per = v.time / duration
-                local l = f:CreateLine()
+                local l = AcquireCombatRegion(f, "Line")
                 l:SetColorTexture(.5, .5, .5)
                 l:SetStartPoint("TOPLEFT", f.leftWidth + f.lwidth * per, f.topHeight + 10)
                 l:SetEndPoint("TOPLEFT", f.leftWidth + f.lwidth * per, f.topHeight)
                 l:SetThickness(1.5)
 
-                local t = f:CreateFontString(nil, "OVERLAY")
+                local t = AcquireCombatRegion(f, "FontString", "OVERLAY")
                 t:SetFont(BIAOGE_TEXT_FONT, 12, "OUTLINE")
                 t:SetPoint("BOTTOM", l, "TOP", 0, 0)
                 t:SetTextColor(1, 0.82, 0)
@@ -1486,25 +2098,25 @@ function TJ.CreateCombatFrame(...)
                 if type(v) == "table" and v.startTime and v.endTime and v.endTime <= duration + 1 then
                     local startWidth = f.leftWidth + f.lwidth * v.startTime / duration + 2
                     local endWidth = f.leftWidth + f.lwidth * v.endTime / duration + 2
-                    local l = f:CreateLine(nil, "OVERLAY")
+                    local l = AcquireCombatRegion(f, "Line", "OVERLAY")
                     l:SetColorTexture(0, 1, 0)
                     l:SetStartPoint("TOPLEFT", startWidth, f.topHeight + 0)
                     l:SetEndPoint("TOPLEFT", endWidth, f.topHeight + 0)
                     l:SetThickness(1.5)
 
-                    local l1 = f:CreateLine(nil, "OVERLAY")
+                    local l1 = AcquireCombatRegion(f, "Line", "OVERLAY")
                     l1:SetColorTexture(0, 1, 0)
                     l1:SetStartPoint("TOPLEFT", startWidth, topHeight + 5)
                     l1:SetEndPoint("TOPLEFT", startWidth, topHeight)
                     l1:SetThickness(1.5)
 
-                    local l2 = f:CreateLine(nil, "OVERLAY")
+                    local l2 = AcquireCombatRegion(f, "Line", "OVERLAY")
                     l2:SetColorTexture(0, 1, 0)
                     l2:SetStartPoint("TOPLEFT", endWidth, topHeight + 5)
                     l2:SetEndPoint("TOPLEFT", endWidth, topHeight)
                     l2:SetThickness(1.5)
 
-                    local t = f:CreateFontString()
+                    local t = AcquireCombatRegion(f, "FontString")
                     t:SetFont(BIAOGE_TEXT_FONT, 12, "OUTLINE")
                     t:SetPoint("BOTTOM", l, "TOP", 0, 5)
                     t:SetTextColor(1, 0.82, 0)
@@ -1522,12 +2134,47 @@ function TJ.CreateCombatFrame(...)
     if not updateTitleColor then
         pointTbl = TJ.GetRaidPointIndexByGUID()
     end
+    local damageTargets = {}
+    if info.targetDamage then
+        local events = { "SPELL_SUMMON", "UNIT_DIED", "SWING_DAMAGE", "SPELL_DAMAGE",
+            "SPELL_PERIODIC_DAMAGE", "RANGE_DAMAGE", "DAMAGE_SHIELD", "DAMAGE_SPLIT" }
+        local function GetInfo(v, subevent)
+            local guid = GetGUID(v[8])
+            if context:GetUnit(guid).npcID ~= info.targetDamage.npcID then return end
+            if not TJ.CombatInfoFilter(info, v, "targetDamage", context) then return end
+            local isDamage = subevent ~= "UNIT_DIED" and subevent ~= "SPELL_SUMMON"
+            if isDamage then
+                local owner = TargetDamageOwner(context, GetGUID(v[4]))
+                local unit = owner and guidTbl[owner]
+                if not unit or not unit.class then return end
+            end
+            haveAura = true
+            if updateTitleColor then return true end
+            local target = damageTargets[guid]
+            if not target then
+                target = { guid = guid, firstTime = v[1], records = {} }
+                damageTargets[guid] = target
+            end
+            target.firstTime = min(target.firstTime, v[1])
+            -- 不同事件分类分批处理，按时间保留最近一次非空的目标标记。
+            if v[11] and (not target.raidTargetTime or v[1] > target.raidTargetTime
+                    or (v[1] == target.raidTargetTime and (v.i or 0) > target.raidTargetIndex)) then
+                target.raidTarget = v[11]
+                target.raidTargetTime = v[1]
+                target.raidTargetIndex = v.i or 0
+            end
+            if subevent ~= "SPELL_SUMMON" then
+                target.records[#target.records + 1] = { event = v, subevent = subevent, time = v[1] }
+            end
+        end
+        tinsert(infos, { infoType = "targetDamage", events = events, GetInfo = GetInfo })
+    end
     -- DPS/HPS排名
     for _, infoType in ipairs({ "dps", "hps", "dps_friend" }) do
         if info[infoType] then
             f.dpsTbl = {}
             local function GetInfo(v, subevent)
-                if not TJ.CombatInfoFilter(info, v, infoType) then return end
+                if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
                 local GUID
                 local petGUID
                 local yes
@@ -1536,7 +2183,7 @@ function TJ.CreateCombatFrame(...)
                     yes = true
                     if info[infoType].spell then
                         yes = nil
-                        for i in ipairs(info[infoType].spell) do
+                        for _, i in ipairs(context:GetSpellRules(info[infoType], v[12])) do
                             if info[infoType].spell[i].spellID then
                                 for _, spellID in ipairs(info[infoType].spell[i].spellID) do
                                     if v[12] == spellID then
@@ -1559,7 +2206,7 @@ function TJ.CreateCombatFrame(...)
                             yes = true
                             petGUID = GUID
                             GUID = combatLog.guid[GUID].ownerGUID
-                            local npcType = strsplit("-", GUID)
+                            local npcType = context:GetUnit(GUID).npcType
                             if (npcType == "Creature" or npcType == "Vehicle") and combatLog.guid[GUID] then
                                 GUID = combatLog.guid[GUID].ownerGUID
                             end
@@ -1572,10 +2219,10 @@ function TJ.CreateCombatFrame(...)
                     local destGUID = GetGUID(v[8])
                     if subevent:match("^SWING_") then
                         GetDamage(infoType, f.dpsTbl, v, subevent, GUID, false, petGUID, destGUID,
-                            combatLog.guid[GUID].class)
+                            combatLog.guid[GUID].class, combatLog, context)
                     else
                         GetDamage(infoType, f.dpsTbl, v, subevent, GUID, true, petGUID, destGUID, combatLog.guid[GUID]
-                            .class)
+                            .class, combatLog, context)
                     end
                 end
             end
@@ -1597,7 +2244,7 @@ function TJ.CreateCombatFrame(...)
         local auraTbl = {}
         local infoType = "aura"
         local function GetInfo(v, subevent)
-            if not TJ.CombatInfoFilter(info, v, infoType) then return end
+            if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
             local destGUID = GetGUID(v[8])
             local sourceGUID = GetGUID(v[4])
             local GUID = "d"
@@ -1607,7 +2254,7 @@ function TJ.CreateCombatFrame(...)
                 GUID = sourceGUID
             end
             local yes
-            for i in ipairs(info[infoType].spell) do
+            for _, i in ipairs(context:GetSpellRules(info[infoType], v[12])) do
                 if info[infoType].spell[i].spellID then
                     for _, spellID in ipairs(info[infoType].spell[i].spellID) do
                         if v[12] == spellID and TJ.CombatInfoFilter_combatRole(
@@ -1672,6 +2319,7 @@ function TJ.CreateCombatFrame(...)
                     while true do
                         local add
                         for i = 1, #aura do
+                            YieldCombatWork(1 / 16)
                             local v = aura[i]
                             -- if i == 1 and not add and v.type == "remove" then
                             --     local tb = GetBaseTbl(v)
@@ -1744,7 +2392,7 @@ function TJ.CreateCombatFrame(...)
                 GUID = sourceGUID
             end
             local yes
-            for i in ipairs(info[infoType].spell) do
+            for _, i in ipairs(context:GetSpellRules(info[infoType], v[12])) do
                 for _, spellID in ipairs(info[infoType].spell[i].spellID) do
                     if v[12] == spellID and not (lastTime[sourceGUID] and v[1] - lastTime[sourceGUID] <= 1) then
                         haveAura = true
@@ -1792,7 +2440,7 @@ function TJ.CreateCombatFrame(...)
         local auraTbl = {}
         local infoType = "harmDied"
         local function GetInfo(v)
-            if not TJ.CombatInfoFilter(info, v, infoType) then return end
+            if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
             local destGUID = GetGUID(v[8])
             local sourceGUID = GetGUID(v[4])
             local GUID = "d"
@@ -1842,7 +2490,7 @@ function TJ.CreateCombatFrame(...)
             local lastTime = {}
             local barWidth = 75
             local function GetInfo(v, subevent)
-                if not TJ.CombatInfoFilter(info, v, infoType) then return end
+                if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
                 local destGUID = GetGUID(v[8])
                 local sourceGUID = GetGUID(v[4])
                 local GUID = "d"
@@ -1879,7 +2527,7 @@ function TJ.CreateCombatFrame(...)
                 else
                     local yes
                     if info[infoType].spell then
-                        for i in ipairs(info[infoType].spell) do
+                        for _, i in ipairs(context:GetSpellRules(info[infoType], v[12])) do
                             for _, spellID in ipairs(info[infoType].spell[i].spellID) do
                                 if v[12] == spellID and CheckTime(infoType, lastTime, GUID, v[1])
                                     and TJ.CombatInfoFilter_combatRole(
@@ -1970,7 +2618,7 @@ function TJ.CreateCombatFrame(...)
         local auraTbl = {}
         local infoType = "castSuccess"
         local function GetInfo(v)
-            if not TJ.CombatInfoFilter(info, v, infoType) then return end
+            if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
             local destGUID = GetGUID(v[8])
             local sourceGUID = GetGUID(v[4])
             local GUID = "s"
@@ -1980,7 +2628,7 @@ function TJ.CreateCombatFrame(...)
                 GUID = sourceGUID
             end
             local yes
-            for i in ipairs(info[infoType].spell) do
+            for _, i in ipairs(context:GetSpellRules(info[infoType], v[12])) do
                 for _, spellID in ipairs(info[infoType].spell[i].spellID) do
                     if v[12] == spellID and TJ.CombatInfoFilter_combatRole(
                             guidTbl[GUID].name,
@@ -2037,7 +2685,7 @@ function TJ.CreateCombatFrame(...)
         local auraTbl = {}
         local infoType = "castFailed"
         local function GetInfo(v)
-            if not TJ.CombatInfoFilter(info, v, infoType) then return end
+            if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
             local destGUID = GetGUID(v[8])
             local sourceGUID = GetGUID(v[4])
             local GUID = "s"
@@ -2047,7 +2695,7 @@ function TJ.CreateCombatFrame(...)
                 GUID = sourceGUID
             end
             local yes
-            for i in ipairs(info[infoType].spell) do
+            for _, i in ipairs(context:GetSpellRules(info[infoType], v[12])) do
                 for _, spellID in ipairs(info[infoType].spell[i].spellID) do
                     if v[12] == spellID and TJ.CombatInfoFilter_combatRole(
                             guidTbl[GUID].name,
@@ -2103,7 +2751,7 @@ function TJ.CreateCombatFrame(...)
         local auraTbl = {}
         local infoType = "dispel"
         local function GetInfo(v)
-            if not TJ.CombatInfoFilter(info, v, infoType) then return end
+            if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
             local destGUID = GetGUID(v[8])
             local sourceGUID = GetGUID(v[4])
             local GUID = "s"
@@ -2136,7 +2784,7 @@ function TJ.CreateCombatFrame(...)
                 })
             end
             if info[infoType].spell then
-                for i in ipairs(info[infoType].spell) do
+                for _, i in ipairs(context:GetSpellRules(info[infoType], v[15])) do
                     for _, spellID in ipairs(info[infoType].spell[i].spellID) do
                         if v[15] == spellID and not TJ.ValueInTable(TJ.banDispel, v[12]) then
                             haveAura = true
@@ -2175,7 +2823,7 @@ function TJ.CreateCombatFrame(...)
         local auraTbl = {}
         local infoType = "interrupt"
         local function GetInfo(v)
-            if not TJ.CombatInfoFilter(info, v, infoType) then return end
+            if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
             local destGUID = GetGUID(v[8])
             local sourceGUID = GetGUID(v[4])
             local GUID = "s"
@@ -2208,7 +2856,7 @@ function TJ.CreateCombatFrame(...)
                 })
             end
             if info[infoType].spell[1].spellID then
-                for i in ipairs(info[infoType].spell) do
+                for _, i in ipairs(context:GetSpellRules(info[infoType], v[15])) do
                     for _, spellID in ipairs(info[infoType].spell[i].spellID) do
                         if v[15] == spellID then
                             haveAura = true
@@ -2247,7 +2895,7 @@ function TJ.CreateCombatFrame(...)
         local auraTbl = {}
         local infoType = "broken"
         local function GetInfo(v, subevent)
-            if not TJ.CombatInfoFilter(info, v, infoType) then return end
+            if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
             local destGUID = GetGUID(v[8])
             local sourceGUID = GetGUID(v[4])
             local GUID = "s"
@@ -2301,14 +2949,10 @@ function TJ.CreateCombatFrame(...)
         local auraTbl = {}
         local infoType = "trigger"
         local function GetInfo(v)
-            if not TJ.CombatInfoFilter(info, v, infoType) then return end
+            if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
             local destGUID = GetGUID(v[8])
             if not destGUID and info[infoType].getDestGUID then
-                for guid in pairs(guidTbl) do
-                    if TJ.GetNPCID(guid) == info[infoType].getDestGUID then
-                        destGUID = guid
-                    end
-                end
+                destGUID = context:GetNPCGUID(info[infoType].getDestGUID)
             end
             local sourceGUID = GetGUID(v[4])
             local GUID = "s"
@@ -2318,7 +2962,7 @@ function TJ.CreateCombatFrame(...)
                 GUID = sourceGUID
             end
             GUID = GUID or ""
-            for i in ipairs(info[infoType].spell) do
+            for _, i in ipairs(context:GetSpellRules(info[infoType], v[12])) do
                 for _, spellID in ipairs(info[infoType].spell[i].spellID) do
                     if v[12] == spellID then
                         haveAura = true
@@ -2371,7 +3015,7 @@ function TJ.CreateCombatFrame(...)
         local auraTbl = {}
         local infoType = "parry"
         local function GetInfo(v, subevent)
-            if not TJ.CombatInfoFilter(info, v, infoType) then return end
+            if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
             local destGUID = GetGUID(v[8])
             local sourceGUID = GetGUID(v[4])
             local GUID = "s"
@@ -2414,7 +3058,7 @@ function TJ.CreateCombatFrame(...)
                 if v[num] == "PARRY" and v[12] ~= 31803 then
                     local yes
                     if info[infoType].spell then
-                        for i in ipairs(info[infoType].spell) do
+                        for _, i in ipairs(context:GetSpellRules(info[infoType], v[12])) do
                             for _, spellID in ipairs(info[infoType].spell[i].spellID) do
                                 if v[12] == spellID and not lastTime[GUID .. v[1]] then
                                     haveAura = true
@@ -2500,7 +3144,7 @@ function TJ.CreateCombatFrame(...)
         local auraTbl = {}
         local infoType = "dead"
         local function GetInfo(v, subevent)
-            if not TJ.CombatInfoFilter(info, v, infoType) then return end
+            if not TJ.CombatInfoFilter(info, v, infoType, context) then return end
             local destGUID = GetGUID(v[8])
             local sourceGUID = GetGUID(v[4])
             local GUID = destGUID
@@ -2554,10 +3198,16 @@ function TJ.CreateCombatFrame(...)
         end
     end
     local function Success()
+        local textLog
         if haveAura and not updateTitleColor then
-            if info.dps or info.hps or info.dps_friend then
+            if info.targetDamage then
+                CreateTargetDamageTimeline(f, damageTargets, context, function()
+                    return f._combatInUse and f._combatGeneration == generation and generation == analysisGeneration
+                end)
+            elseif info.dps or info.hps or info.dps_friend then
                 local newTbl = {}
                 for guid, v in pairs(f.dpsTbl) do
+                    YieldCombatWork(1 / 16)
                     tinsert(newTbl, v)
                     newTbl[#newTbl].name = combatLog.guid[guid].name
                     newTbl[#newTbl].class = combatLog.guid[guid].class
@@ -2584,7 +3234,7 @@ function TJ.CreateCombatFrame(...)
                         end
                     end
                 end
-                sort(newTbl, function(a, b)
+                SortCombatWork(newTbl, function(a, b)
                     return a.damage > b.damage
                 end)
                 local maxDamage = newTbl[1].damage
@@ -2637,7 +3287,7 @@ function TJ.CreateCombatFrame(...)
                         count = count + 1
                         local playerText = CreatePlayerText(count, v.name, v.class)
                         playerText.name = v.name
-                        local t = f:CreateFontString()
+                        local t = AcquireCombatRegion(f, "FontString")
                         t:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
                         t:SetPoint("LEFT", playerText, "RIGHT", 0, 0)
                         t:SetTextColor(1, 0, 0)
@@ -2651,6 +3301,7 @@ function TJ.CreateCombatFrame(...)
                 -- 死亡
                 if not info.dead and event.UNIT_DIED and not info.notShowDead then
                     for _, v in ipairs(event.UNIT_DIED) do
+                        YieldCombatWork(1 / 16)
                         if v.hp and v.hp <= 0 then
                             local diedGUID = GetGUID(v[8])
                             for _, playerText in pairs(playerTbl) do
@@ -2686,45 +3337,64 @@ function TJ.CreateCombatFrame(...)
                     for _, playerText in pairs(playerTbl) do
                         for _, bar in pairs(playerText.barTbl) do
                             tinsert(db, bar)
+                            YieldCombatWork(1 / 32)
                         end
                     end
-                    sort(db, function(a, b)
+                    SortCombatWork(db, function(a, b)
                         if a.v.endTime and b.v.endTime then
                             return a.v.endTime < b.v.endTime
                         end
                     end)
-                    CreateTextLog(f, db)
+                    textLog = db
                 end
                 f:SetHeight((barCount + 1) * btHeight - topHeight)
 
-                if info.damageFriend or info.beDamage2 then
-                    ShowDamageFriendCount(playerTbl, info, info.damageFriend and "damageFriend" or "beDamage2")
-                end
                 if info.SSpowerSpell then
                     SSpowerSpell(playerTbl)
                 end
+                for _, playerText in ipairs(playerTbl) do GetHoverBars(playerText) end
+                TJ.PrepareCombatHealthIndex(f, playerTbl, event, context)
             end
-            TJ.combatFrame:Show()
+            f:Show()
+            if textLog then CreateTextLog(f, textLog) end
+            if info.damageFriend or info.beDamage2 then
+                ShowDamageFriendCount(playerTbl, info, info.damageFriend and "damageFriend" or "beDamage2", context)
+            end
             if click then
                 TJ.SetCombatFrameIsClick(f)
             end
         end
-        if GoNextInfo() and updateTitleColor then
-            GoNextUpdateTitleColor()
-        end
     end
-    local function ProcessEvents()
-        if not TJ.combatFrameProcessors[processorKey] then
-            return
+    local function FinishAnalysis()
+        if GoNextInfo() and updateTitleColor then GoNextUpdateTitleColor() end
+    end
+    local function CanContinue()
+        if generation ~= analysisGeneration or not TJ.combatFrameProcessors[processorKey] then
+            return false
         end
         if not updateTitleColor and not bt.isOnEnter and TJ.combatFrameMany[1] and not TJ.combatFrameMany[1].click then
             TJ.combatFrameMany[1]:Hide()
-            return
+            return false
         end
+        return true
+    end
+    local ProcessEvents
+    local function AdvanceInfo()
+        infoIndex = infoIndex + 1
+        startIndex, eventIndex = 1, 1
+        After(0, ProcessEvents)
+    end
+    ProcessEvents = function()
+        if not CanContinue() then return end
         local infoType = infos[infoIndex] and infos[infoIndex].infoType
         if not infoType then
             -- 全部子战斗分析类型已经处理完成，结束
-            Success()
+            if updateTitleColor then
+                Success()
+                FinishAnalysis()
+            else
+                RunCombatBuild(f, CanContinue, Success, FinishAnalysis)
+            end
             return
         end
         if info[infoType] then
@@ -2751,11 +3421,15 @@ function TJ.CreateCombatFrame(...)
             else
                 -- 全部事件已经处理完成，开始创建该战斗分析类型的UI
                 if infos[infoIndex].StartCreatePlayerFrame then
-                    infos[infoIndex].StartCreatePlayerFrame()
+                    if updateTitleColor then
+                        infos[infoIndex].StartCreatePlayerFrame()
+                    else
+                        RunCombatBuild(f, CanContinue, infos[infoIndex].StartCreatePlayerFrame, AdvanceInfo)
+                        return
+                    end
                 end
-                infoIndex = infoIndex + 1
-                startIndex = 1
-                eventIndex = 1
+                AdvanceInfo()
+                return
             end
         end
         After(0, ProcessEvents)

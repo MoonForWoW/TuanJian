@@ -113,7 +113,153 @@ function TJ.CombatFiterEvent(type, subevent, info, ...)
     end
 end
 
-function TJ.CombatInfoFilter(info, v, infoType)
+-- 一次分析内共享索引，不挂在战斗存档或全局日志缓存上。
+function TJ.CreateCombatAnalysisContext(combatLog, phase)
+    local context = { log = combatLog, phase = phase, guids = {}, units = {}, filters = {}, rules = {}, icons = {} }
+    local empty = {}
+    local function MakeSet(tbl, arrayOnly)
+        if not tbl then return end
+        local set = {}
+        local iterator = arrayOnly and ipairs or pairs
+        for _, value in iterator(tbl) do set[value] = true end
+        return set
+    end
+    function context:GetSpellIcon(spellID)
+        local icon = self.icons[spellID]
+        if not icon then
+            icon = C_Spell.GetSpellTexture(spellID)
+            self.icons[spellID] = icon -- 未加载成功时不缓存失败结果。
+        end
+        return icon
+    end
+    function context:GetGUID(index)
+        if type(index) ~= "number" then return index end
+        local guid = self.guids[index]
+        if guid == nil then
+            guid = GetGUID(index, self.log)
+            self.guids[index] = guid or false
+        end
+        return guid or nil
+    end
+    function context:GetUnit(guid)
+        if not guid then return empty end
+        local unit = self.units[guid]
+        if not unit then
+            local npcType, _, _, _, _, npcID = strsplit("-", guid)
+            unit = { npcType = npcType, npcID = tonumber(npcID) }
+            self.units[guid] = unit
+        end
+        return unit
+    end
+    function context:GetNPCGUID(npcID)
+        if not self.npcGUIDs then
+            self.npcGUIDs = {}
+            for guid in pairs(self.log.guid) do
+                self.npcGUIDs[self:GetUnit(guid).npcID or 0] = guid
+            end
+        end
+        return self.npcGUIDs[npcID]
+    end
+    function context:GetSpellRules(info, spellID)
+        local index = self.rules[info]
+        if not index then
+            index = {}
+            for i, rule in ipairs(info.spell or empty) do
+                local seen = {}
+                for _, id in ipairs(rule.spellID or empty) do
+                    if not seen[id] then
+                        seen[id] = true
+                        index[id] = index[id] or {}
+                        index[id][#index[id] + 1] = i
+                    end
+                end
+            end
+            self.rules[info] = index
+        end
+        return index[spellID] or empty
+    end
+    function context:GetFilter(info)
+        local filter = self.filters[info]
+        if filter then return filter end
+        filter = {
+            onlyShowMe = MakeSet(info.onlyShowMe, true), banSpell = MakeSet(info.banSpell),
+            sourceNPCID = MakeSet(info.sourceNPCID), destNPCID = MakeSet(info.destNPCID),
+            sourceNpcType = MakeSet(info.sourceNpcType, true), destNpcType = MakeSet(info.destNpcType, true),
+        }
+        local function ChangeTime(t)
+            if t == "duration" then return self.log.duration end
+            if type(t) == "number" then return t end
+            if type(t) == "string" then
+                for _, item in pairs(self.log.otherTime) do
+                    if item.name == t then return item.time end
+                end
+            end
+        end
+        if info.startTime and info.endTime then
+            filter.hasTime = true
+            filter.startTime = ChangeTime(info.startTime) or ChangeTime(info.startTime2)
+            filter.endTime = ChangeTime(info.endTime) or ChangeTime(info.endTime2)
+        end
+        local selectedPhase = info.phase or (info.showDropDown and self.phase)
+        if selectedPhase then
+            filter.ranges = {}
+            local function AddRange(item)
+                if item.startTime and item.endTime then
+                    filter.ranges[#filter.ranges + 1] = { item.startTime, item.endTime }
+                end
+            end
+            if type(selectedPhase) == "table" then
+                local phases = MakeSet(selectedPhase)
+                for _, item in pairs(self.log.otherTime) do
+                    if phases[item.name] then AddRange(item) end
+                end
+            elseif self.log.otherTime[selectedPhase] then
+                AddRange(self.log.otherTime[selectedPhase])
+            else
+                for _, item in pairs(self.log.otherTime) do
+                    if item.name == selectedPhase then AddRange(item) end
+                end
+            end
+        end
+        self.filters[info] = filter
+        return filter
+    end
+    function context:Filter(info, v, infoType)
+        if not v[1] or v[1] > self.log.duration then return end
+        local sourceGUID, destGUID = self:GetGUID(v[4]), self:GetGUID(v[8])
+        local source, dest = self:GetUnit(sourceGUID), self:GetUnit(destGUID)
+        if infoType == "damageFriend" then
+            if sourceGUID == destGUID or source.npcType ~= "Player" or dest.npcType ~= "Player" then return end
+        elseif infoType == "dps_friend" then
+            if sourceGUID == destGUID or (source.npcType ~= "Player" and source.npcType ~= "Pet")
+                or dest.npcType ~= "Player" then return end
+        end
+        local filter = self:GetFilter(info[infoType])
+        if filter.onlyShowMe and filter.onlyShowMe[v[12]] and sourceGUID ~= destGUID then return end
+        if filter.destNPCID and destGUID then
+            if (dest.npcType ~= "Creature" and dest.npcType ~= "Vehicle") or not filter.destNPCID[dest.npcID] then return end
+        end
+        if filter.sourceNPCID and sourceGUID then
+            if (source.npcType ~= "Creature" and source.npcType ~= "Vehicle") or not filter.sourceNPCID[source.npcID] then return end
+        end
+        if filter.destNpcType and destGUID and not filter.destNpcType[dest.npcType] then return end
+        if filter.sourceNpcType and sourceGUID and not filter.sourceNpcType[source.npcType] then return end
+        if filter.banSpell and type(v[12]) == "number" and filter.banSpell[v[12]] then return end
+        if filter.hasTime and (not filter.startTime or not filter.endTime
+            or v[1] < filter.startTime or v[1] > filter.endTime) then return end
+        if filter.ranges then
+            for _, range in ipairs(filter.ranges) do
+                if v[1] >= range[1] and v[1] <= range[2] then return true end
+            end
+            return false
+        end
+        return true
+    end
+    return context
+end
+
+function TJ.CombatInfoFilter(info, v, infoType, context)
+    if context then return context:Filter(info, v, infoType) end
     local combatLog = TJ.GetCombatLog()
     if not v[1] or v[1] > combatLog.duration then return end
     local sourceGUID = GetGUID(v[4])
@@ -282,10 +428,90 @@ function TJ.CombatInfoFilter_combatRole(name, combatRoleTbl, combat)
     end
 end
 
+-- 显示面板前按目标建立血量事件索引；索引随面板回收，不进入日志 LRU。
+function TJ.PrepareCombatHealthIndex(frame, playerTbl, event, context)
+    local needed = {}
+    for _, playerText in ipairs(playerTbl) do
+        for _, bar in ipairs(playerText.barTbl or {}) do
+            if bar.tooltip:match("health") then
+                local guid = bar.v.DestTarget and bar.v.destGUID or bar.playerTextGUID
+                if guid then needed[guid] = true end
+            end
+            TJ.YieldCombatWork(1 / 32)
+        end
+    end
+    if not next(needed) then return end
+    local index = { log = context.log, targets = {} }
+    for subevent, records in pairs(event) do
+        if TJ.CombatFiterEvent("health", subevent) then
+            local buckets = {}
+            for _, v in ipairs(records) do
+                local guid = context:GetGUID(v[8])
+                if needed[guid] then
+                    local bucket = buckets[guid]
+                    if not bucket then
+                        bucket = { subevent = subevent, rows = {} }
+                        buckets[guid] = bucket
+                        index.targets[guid] = index.targets[guid] or {}
+                        tinsert(index.targets[guid], bucket)
+                    end
+                    local rows = bucket.rows
+                    if #rows > 0 and rows[#rows][1] > v[1] then bucket.unsorted = true end
+                    rows[#rows + 1] = v
+                end
+                TJ.YieldCombatWork(1 / 32)
+            end
+            for _, bucket in pairs(buckets) do
+                if bucket.unsorted then
+                    TJ.SortCombatWork(bucket.rows, function(a, b) return a[1] < b[1] end)
+                    bucket.unsorted = nil
+                end
+            end
+        end
+    end
+    frame._combatHealthIndex = index
+end
+
 -- 鼠标提示工具
-local function _GetHealth(self, tbl, v, subevent, isSpell, isEnvironmental)
+local tooltipHealthBars = {}
+local tooltipBarsHooked
+function TJ.ResetCombatTooltipBars()
+    for _, bar in pairs(tooltipHealthBars) do bar:Hide() end
+end
+local function AcquireTooltipHealthBar(line)
+    if not tooltipBarsHooked then
+        GameTooltip:HookScript("OnHide", TJ.ResetCombatTooltipBars)
+        tooltipBarsHooked = true
+    end
+    local bar = tooltipHealthBars[line]
+    if not bar then
+        bar = CreateFrame("StatusBar", nil, GameTooltip)
+        bar:EnableMouse(false)
+        bar:SetStatusBarTexture("Interface/ChatFrame/ChatFrameBackground")
+        bar:SetMinMaxValues(0, 10000)
+        tooltipHealthBars[line] = bar
+    end
+    bar:ClearAllPoints()
+    bar:Show()
+    return bar
+end
+
+local function CachedTooltipResult(self, field, build)
+    local event = TJ.GetCombatLogEvent()
+    local cache = self[field]
+    if cache and cache.event == event and cache.v == self.v and cache.tooltip == self.tooltip
+        and cache.startTime == self.v.startTime and cache.endTime == self.v.endTime
+        and cache.sourceGUID == self.v.sourceGUID and cache.destGUID == self.v.destGUID
+        and cache.spellID == self.v.spellID then return cache.result end
+    local result = build(self)
+    self[field] = { event = event, v = self.v, result = result, tooltip = self.tooltip,
+        startTime = self.v.startTime, endTime = self.v.endTime, sourceGUID = self.v.sourceGUID,
+        destGUID = self.v.destGUID, spellID = self.v.spellID }
+    return result
+end
+local function _GetHealth(self, tbl, v, subevent, isSpell, isEnvironmental, combatLog)
     local num = isEnvironmental and 13 or (isSpell and 15 or 12)
-    local _sourceGUID = GetGUID(v[4])
+    local _sourceGUID = GetGUID(v[4], combatLog)
     local __tbl = {
         time = format("%.1f", Round(self.v.endTime - v[1], 1)),
         endTime = v[1],
@@ -329,22 +555,52 @@ local function _GetHealth(self, tbl, v, subevent, isSpell, isEnvironmental)
     tinsert(tbl, __tbl)
 end
 local function GetHealth(self, health_onlyHeal, durTime, destTarget)
-    local event = TJ.GetCombatLogEvent()
+    local index = self.frame and self.frame._combatHealthIndex
+    local target = destTarget and self.v.destGUID or self.playerTextGUID
+    local startTime = durTime or 7
+    local cache = self._combatHealthCache
+    if index and cache and cache.index == index and cache.target == target
+        and cache.endTime == self.v.endTime and cache.startTime == startTime
+        and cache.onlyHeal == not not health_onlyHeal then
+        return cache.result
+    end
     local tbl = {}
     local f_event = health_onlyHeal and "health_onlyHeal" or "health"
-    local startTime = durTime or 7
-    for subevent in pairs(event) do
-        if TJ.CombatFiterEvent(f_event, subevent) then
-            for i, v in ipairs(event[subevent]) do
-                if v[1] <= self.v.endTime and self.v.endTime - v[1] <= startTime
-                    and GetGUID(v[8]) == (destTarget and self.v.destGUID or self.playerTextGUID) then
-                    if subevent:match("^ENVIRONMENTAL_") then
-                        _GetHealth(self, tbl, v, subevent, false,true)
-                    elseif subevent:match("^SWING_") then
-                        _GetHealth(self, tbl, v, subevent, false)
-                    else
-                        _GetHealth(self, tbl, v, subevent, true)
-                    end
+    local function AddRecord(v, subevent)
+        if v[1] <= self.v.endTime and self.v.endTime - v[1] <= startTime then
+            if subevent:match("^ENVIRONMENTAL_") then
+                _GetHealth(self, tbl, v, subevent, false, true, index and index.log)
+            elseif subevent:match("^SWING_") then
+                _GetHealth(self, tbl, v, subevent, false, nil, index and index.log)
+            else
+                _GetHealth(self, tbl, v, subevent, true, nil, index and index.log)
+            end
+        end
+    end
+    if index then
+        for _, bucket in ipairs(index.targets[target] or {}) do
+            if TJ.CombatFiterEvent(f_event, bucket.subevent) then
+                local rows = bucket.rows
+                local lo, hi = 1, #rows + 1
+                local lowerTime = self.v.endTime - startTime - 0.000001
+                while lo < hi do
+                    local mid = math.floor((lo + hi) / 2)
+                    if rows[mid][1] < lowerTime then lo = mid + 1 else hi = mid end
+                end
+                for i = lo, #rows do
+                    local v = rows[i]
+                    if v[1] > self.v.endTime then break end
+                    AddRecord(v, bucket.subevent)
+                end
+            end
+        end
+    else
+        -- 兼容非标准分析控件；标准面板在显示前已经准备好索引。
+        local event = TJ.GetCombatLogEvent()
+        for subevent, rows in pairs(event) do
+            if TJ.CombatFiterEvent(f_event, subevent) then
+                for _, v in ipairs(rows) do
+                    if GetGUID(v[8]) == target then AddRecord(v, subevent) end
                 end
             end
         end
@@ -362,9 +618,13 @@ local function GetHealth(self, health_onlyHeal, durTime, destTarget)
     end)
     local maxLine = 25
     if #tbl > maxLine then
-        for i = 1, #tbl - maxLine do
-            tremove(tbl, 1)
-        end
+        local last = {}
+        for i = #tbl - maxLine + 1, #tbl do last[#last + 1] = tbl[i] end
+        tbl = last
+    end
+    if index then
+        self._combatHealthCache = { index = index, target = target, endTime = self.v.endTime,
+            startTime = startTime, onlyHeal = not not health_onlyHeal, result = tbl }
     end
     return tbl
 end
@@ -383,9 +643,7 @@ local function _GetHeal(self, tbl, v)
         tinsert(tbl, __tbl)
     end
 end
-local function GetHeal(self)
-    local FB = TuanJian.FB
-    local bossIndex = TuanJian.bossIndex
+local function BuildHeal(self)
     local event = TJ.GetCombatLogEvent()
     local tbl = {}
     for subevent in pairs(event) do
@@ -396,6 +654,9 @@ local function GetHeal(self)
         end
     end
     return tbl
+end
+local function GetHeal(self)
+    return CachedTooltipResult(self, "_combatHealCache", BuildHeal)
 end
 
 local function _GetDamage(self, tbl, v, subevent, isSpell, isEnvironmental)
@@ -431,7 +692,7 @@ local function _GetDamage(self, tbl, v, subevent, isSpell, isEnvironmental)
     end
     tinsert(tbl, __tbl)
 end
-local function GetDamage(self)
+local function BuildDamage(self)
     local event = TJ.GetCombatLogEvent()
     local tooltip = self.tooltip
     local tbl = {}
@@ -586,6 +847,10 @@ function TJ.GetHLKwuran(self)
             end
         end
     end
+end
+
+local function GetDamage(self)
+    return CachedTooltipResult(self, "_combatDamageCache", BuildDamage)
 end
 
 function TJ.CombatFrameAddText(self)
@@ -770,10 +1035,10 @@ function TJ.CombatFrameAddText(self)
                     GameTooltip:AddDoubleLine(left, right, 1, .82, 0, 1, .82, 0)
                 end
 
-                if v.hp then
+                if v.hp and v.maxhp and v.maxhp > 0 then
                     local r, g, b = unpack(barColor)
                     local num = GameTooltip:NumLines()
-                    local bar = CreateFrame("StatusBar", nil, GameTooltip)
+                    local bar = AcquireTooltipHealthBar(num)
                     bar:SetPoint("TOPLEFT", _G["GameTooltipTextLeft" .. num], "TOPLEFT", 0, 0)
                     bar:SetPoint("BOTTOMRIGHT", _G["GameTooltipTextRight" .. num], "BOTTOMRIGHT", 0, 0)
                     bar:SetStatusBarTexture("Interface/ChatFrame/ChatFrameBackground")
@@ -781,10 +1046,6 @@ function TJ.CombatFrameAddText(self)
                     bar:SetFrameLevel(GameTooltip:GetFrameLevel())
                     bar:SetMinMaxValues(0, 10000)
                     bar:SetValue((v.hp / v.maxhp * 10000))
-                    bar:SetScript("OnHide", function(self)
-                        self:Hide()
-                        self:SetParent(nil)
-                    end)
                 end
             end
         else
@@ -935,7 +1196,7 @@ function TJ.CombatFrameAddText(self)
                 if v.hp and v.maxhp and v.maxhp ~= 0 then
                     local r, g, b = 1, 0, 0
                     local num = GameTooltip:NumLines()
-                    local bar = CreateFrame("StatusBar", nil, GameTooltip)
+                    local bar = AcquireTooltipHealthBar(num)
                     bar:SetPoint("TOPLEFT", _G["GameTooltipTextLeft" .. num], "TOPLEFT", 0, 0)
                     bar:SetPoint("BOTTOMRIGHT", _G["GameTooltipTextRight" .. num], "BOTTOMRIGHT", 0, 0)
                     bar:SetStatusBarTexture("Interface/ChatFrame/ChatFrameBackground")
@@ -943,10 +1204,6 @@ function TJ.CombatFrameAddText(self)
                     bar:SetFrameLevel(GameTooltip:GetFrameLevel())
                     bar:SetMinMaxValues(0, 10000)
                     bar:SetValue(v.hp / v.maxhp * 10000)
-                    bar:SetScript("OnHide", function(self)
-                        self:Hide()
-                        self:SetParent(nil)
-                    end)
                 end
             end
         end

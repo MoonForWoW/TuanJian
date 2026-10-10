@@ -795,12 +795,30 @@ function TJ.InitOptions()
             TJ.ClearOutCombatLog()
         end)
     end
+    h = h + 30
+    -- 战斗分析缓存数量
+    do
+        local name = "combatLogCacheCount"
+        TJ.options[name .. "reset"] = 3
+        TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
+        local ontext = {
+            L["战斗分析缓存数量"],
+            L["保留最近查看的多少份已解压战斗分析。缓存内的战斗分析可以直接切换，超出后会释放最久未使用的缓存，再次查看时需要重新解压。"],
+            " ",
+            L["仅释放内存缓存，不删除已保存的战斗分析。"],
+            " ",
+            L["16G内存的，建议选3个。32G或以上，可以无脑选最大值。"],
+        }
+        local f = O.CreateSlider(name, AddTexture('QUEST') .. L["战斗分析缓存数量"], optionFrame, 1, 20, 1, 30, height - h, ontext)
+        TJ.options["button" .. name] = f
+        f:HookScript("OnValueChanged", function()
+            TJ.TrimCombatLogCache()
+        end)
+    end
     h = h + 40
     -- 快捷键
     O.CreateBindKey(optionFrame, 30, -h, nil, "TUANJIAN", L["打开/关闭快捷键："])
 
-
-
-    h = h + 60
+    h = h + 40
     optionFrame:SetHeight(h)
 end

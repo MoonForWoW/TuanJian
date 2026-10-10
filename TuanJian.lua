@@ -274,7 +274,7 @@ TJ.Init(function()
                         role = role .. AddTexture("interface/groupframe/ui-group-masterlooter", y)
                     end
                     local c1, c2, c3 = GetClassRGB(v.name)
-                    TuanJianTooltip2:AddDoubleLine(v.name .. role, Ver , c1, c2, c3, 1, 1, 1)
+                    TuanJianTooltip2:AddDoubleLine(v.name .. role, Ver, c1, c2, c3, 1, 1, 1)
                     if Ver == L["无"] or Ver == L["未知"] then
                         local alpha = 0.4
                         if _G["TuanJianTooltip2TextLeft" .. (i + line)] then
@@ -401,8 +401,8 @@ TJ.Init(function()
             return bt
         end
 
-        if TJ.canUseTips then   
-        local bt = TJ.Create_TabButton(TJ.raidMainFrameTabNum, L["战术"], TJ.raidMainFrame)
+        if TJ.canUseTips then
+            local bt = TJ.Create_TabButton(TJ.raidMainFrameTabNum, L["战术"], TJ.raidMainFrame)
         end
         local bt = TJ.Create_TabButton(TJ.raidTargetMainFrameTabNum, L["锁标"], TJ.raidTargetMainFrame)
         local bt = TJ.Create_TabButton(TJ.tjMainFrameTabNum, TJ.IsTBC and L["个减"] or L["团减"], TJ.tjMainFrame)
@@ -669,6 +669,7 @@ TJ.Init(function()
                         end
                     end
                 end
+                return self.buttons[1].bt
             end
             function nextBossMixin:OnEnter()
                 GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT", 0, 0)
@@ -688,7 +689,7 @@ TJ.Init(function()
                 self:GetScript("OnEnter")(self)
             end
 
-            function CreateNextBossButton(lastButton, buttons)
+            CreateNextBossButton = function(lastButton, buttons)
                 local bt = CreateFrame("Button", nil, lastButton)
                 bt:SetSize(25, 25)
                 bt:SetNormalTexture("interface/buttons/ui-spellbookicon-nextpage-up")
@@ -731,6 +732,7 @@ TJ.Init(function()
                         bt:SetDisabledFontObject(TJ.FontWhite15)
                         bt:SetHighlightFontObject(TJ.FontWhite15)
                         bt:SetSize(25, f:GetHeight())
+                        bt:SetAlpha(v.notFinish and .5 or 1)
                         bt:SetHighlightTexture("Interface/PaperDollInfoFrame/UI-Character-Tab-Highlight")
                         bt:SetText(bossIndex)
                         bt.bossIndex = bossIndex
@@ -747,7 +749,7 @@ TJ.Init(function()
                             GameTooltip:ClearLines()
                             GameTooltip:AddLine(v.name, 1, 1, 1, true)
                             if v.notFinish then
-                                GameTooltip:AddLine(L["施工中...请等待后续更新"], 1, 0, 0, true)
+                                GameTooltip:AddLine(L["待施工...请等待后续更新"], 1, 0, 0, true)
                             end
                             GameTooltip:Show()
                         end)
@@ -908,20 +910,13 @@ TJ.Init(function()
             TuanJian[FB].lastBoss = bossIndex
             for i, bt in pairs(TJ.tabFrame[FB]) do
                 if type(i) == "number" and i > 0 then
-                    bt:Disable()
-                end
-            end
-            After(.5, function()
-                for i, bt in pairs(TJ.tabFrame[FB]) do
-                    if type(i) == "number" and i > 0 then
-                        if bossIndex == i then
-                            bt:Disable()
-                        else
-                            bt:Enable()
-                        end
+                    if bossIndex == i then
+                        bt:Disable()
+                    else
+                        bt:Enable()
                     end
                 end
-            end)
+            end
             TJ.UpdateMainFrameSize()
             TJ.bossNameText:SetText(TJ.FBinfo[FB][bossIndex].name)
             TJ.bossNameText.owner:SetWidth(TJ.bossNameText:GetWidth())
@@ -950,22 +945,39 @@ TJ.Init(function()
                     for i, v in ipairs(playerTbl) do
                         if (BGDEBUG or v.player ~= player) and UnitInRaid(v.player) then
                             if not newTbl[v.player] then
-                                newTbl[v.player] = v.quest
-                            else
-                                newTbl[v.player] = newTbl[v.player] .. L["，"] .. v.quest
+                                newTbl[v.player] = {}
                             end
+                            tinsert(newTbl[v.player], v.quest)
                         end
                     end
-                    local maxCount = ns.Size(newTbl)
+                    local messages = {}
+                    local prefix = format(L["通知: 你的任务=>%s"], "")
+                    for player, quests in pairs(newTbl) do
+                        local text = ""
+                        for _, quest in ipairs(quests) do
+                            local combined = text == "" and quest or text .. L["，"] .. quest
+                            if #prefix + #combined > 255 and text ~= "" then
+                                for _, msg in ipairs(TJ.SplitChatMessage(text, prefix)) do
+                                    messages[#messages + 1] = { player = player, text = msg }
+                                end
+                                text = quest
+                            else
+                                text = combined
+                            end
+                        end
+                        for _, msg in ipairs(TJ.SplitChatMessage(text, prefix)) do
+                            messages[#messages + 1] = { player = player, text = msg }
+                        end
+                    end
+                    local maxCount = #messages
                     if maxCount ~= 0 then
                         bar:Start(maxCount)
                         local t = 0
                         local count = 0
-                        for player, quest in pairs(newTbl) do
+                        for _, message in ipairs(messages) do
                             After(t, function()
                                 count = count + 1
-                                local msg = format(L["通知: 你的任务=>%s"], quest)
-                                SendChatMessage(msg, "WHISPER", nil, TJ.GFN(player))
+                                SendChatMessage(message.text, "WHISPER", nil, TJ.GFN(message.player))
                                 bar:SetValue(count)
                                 bar.rightText:SetText(format("%s/%s", count, maxCount))
                                 if count == maxCount then

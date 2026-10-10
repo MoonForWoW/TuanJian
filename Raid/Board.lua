@@ -1,26 +1,26 @@
-local AddonName, ns = ...
+local AddonName, ns      = ...
 
-local LibBG         = ns.LibBG
-local L             = ns.L
-local AddTexture    = ns.AddTexture
-local Round         = ns.Round
-local GetClassRGB   = ns.GetClassRGB
+local LibBG              = ns.LibBG
+local L                  = ns.L
+local AddTexture         = ns.AddTexture
+local Round              = ns.Round
+local GetClassRGB        = ns.GetClassRGB
 
-local pt            = print
-local After         = C_Timer.After
-local BG            = TJ
+local pt                 = print
+local After              = C_Timer.After
+local BG                 = TJ
 
-local realmID       = GetRealmID()
-local player        = UnitName("player")
+local realmID            = GetRealmID()
+local player             = UnitName("player")
 
-local IsAddOnLoaded = IsAddOnLoaded or C_AddOns.IsAddOnLoaded
-local LoadAddOn     = LoadAddOn or C_AddOns.LoadAddOn
+local IsAddOnLoaded      = IsAddOnLoaded or C_AddOns.IsAddOnLoaded
+local LoadAddOn          = LoadAddOn or C_AddOns.LoadAddOn
 
-local info          = {}
-TJ.Board_info     = info
+local info               = {}
+TJ.Board_info            = info
 local boardChannelPrefix = "TuanJianBoard"
-local boardChannelCount = 5
-local boardChannelIndex = 0
+local boardChannelCount  = 5
+local boardChannelIndex  = 0
 
 for i = 1, boardChannelCount do
     C_ChatInfo.RegisterAddonMessagePrefix(boardChannelPrefix .. i)
@@ -67,10 +67,10 @@ TJ.Init2(function()
         TJ.Board_TJ3 = { 55233, 48792, 498, 1038, 6940, 48788, 33206, 47788, 64205, 31821, }   -- 单体减伤
         TJ.Board_TJ4 = { 1044 }                                                                -- 自由
         TJ.Board_TJ5 = {
-            6940,                                                                                -- 小牺
-            33206,                                                                               -- 压制
-            47788,                                                                               -- 守护之魂
-            1283513,                                                                             -- 树皮
+            6940,                                                                              -- 小牺
+            33206,                                                                             -- 压制
+            47788,                                                                             -- 守护之魂
+            1283513,                                                                           -- 树皮
         }
         TJ.Board_TJ6 = { 31821 }                                                               -- 光掌
         local sum = 0
@@ -374,6 +374,623 @@ function TJ.CreateBoard(FB, bossIndex, spellInfo)
     end
 end
 
+-- 固定时间轴方案：仅创建方案按钮和角色输入框，运行时生成提醒数据。
+function TJ.CreateTimelineBoard(FB, bossIndex, plans)
+    local parent = TJ.frame[FB][bossIndex]
+    local bossDB = TuanJian[FB][bossIndex]
+    bossDB.board.timelineRoles = bossDB.board.timelineRoles or {}
+
+    local bindings = bossDB.board.timelineRoles
+
+    local board = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    board:SetSize(370, TJ.FBinfo[FB][bossIndex].height)
+    board:SetPoint("TOPRIGHT", TJ.MainFrame, "TOPLEFT", -1, 0)
+    board:SetBackdrop({
+        bgFile = "Interface/ChatFrame/ChatFrameBackground",
+        edgeFile = "Interface/ChatFrame/ChatFrameBackground",
+        edgeSize = 1
+    })
+    board:SetBackdropColor(0, 0, 0, .8)
+    local r, g, b = ns.GetClassRGB(nil, "player")
+    board:SetBackdropBorderColor(r, g, b, TJ.borderAlpha)
+    board:EnableMouse(true)
+
+    board.isTimelineBoard = true
+    board.child, board.tabButton, board.roleEdits = {}, {}, {}
+    board.plans, board.planLabels = {}, {}
+    parent.board = board
+
+    local function Text(owner, text, x, y, size)
+        local t = owner:CreateFontString(nil, "OVERLAY")
+        t:SetFont(BIAOGE_TEXT_FONT, size or 14, "OUTLINE")
+        t:SetPoint("TOPLEFT", x, y)
+        t:SetJustifyH("LEFT")
+        t:SetTextColor(1, 1, 1)
+        t:SetText(text)
+        return t
+    end
+
+    -- 标题
+    do
+        local heading = Text(board, L["减伤链"], 0, 0, 16)
+        heading:ClearAllPoints()
+        heading:SetPoint("TOP", board, "TOP", 0, -5)
+
+        local subtitle = Text(board, AddTexture("Interface\\Icons\\spell_deathknight_iceboundfortitude") .. L["坦克减伤链"], 0, 0, 15)
+        subtitle:ClearAllPoints()
+        subtitle:SetPoint("TOP", board, "TOP", 0, -40)
+    end
+
+    local scroll, content = TJ.CreateScrollFrame(board, board:GetWidth() - 20, board:GetHeight() - 100, nil)
+    scroll:SetPoint("TOPLEFT", 10, -60)
+    scroll:SetBackdrop({
+        bgFile = "Interface/ChatFrame/ChatFrameBackground",
+        edgeFile = "Interface/ChatFrame/ChatFrameBackground",
+        edgeSize = 1
+    })
+    scroll:SetBackdropColor(.3, .3, .3, .2)
+    scroll:SetBackdropBorderColor(1, 1, 1, .3)
+
+    local roles, roleOrder = {}, {}
+    for _, plan in ipairs(plans) do
+        board.plans[plan.id] = plan
+        for _, role in ipairs(plan.roles) do
+            if not roles[role.key] then
+                roles[role.key] = role
+                roleOrder[#roleOrder + 1] = role.key
+            end
+        end
+    end
+
+    -- 从原逐行分配中迁移玩家绑定，保留原数据以便回溯。
+    if bossDB.timelinePlan == nil then
+        local old = bossDB.board[1]
+        local migrated
+        for _, plan in ipairs(plans) do
+            for _, node in ipairs(plan.timeline) do
+                local db = old and node.legacyIndex and old[node.legacyIndex .. "-1-player"]
+                if db and db.text and db.text ~= "" and not bindings[node.role] then
+                    local copy = {}
+                    for key, value in pairs(db) do
+                        copy[key] = value
+                    end
+                    bindings[node.role] = copy
+                    migrated = plan.id
+                end
+            end
+        end
+        bossDB.timelinePlan = migrated or 0
+    end
+    if bossDB.timelinePlan ~= 0 and not board.plans[bossDB.timelinePlan] then
+        bossDB.timelinePlan = 0
+    end
+
+    local function SpellText(spellID)
+        if not C_Spell.DoesSpellExist(spellID) then
+            return format("|cffff6666%s (%d)|r", L["技能不可用"], spellID)
+        end
+        local link = C_Spell.GetSpellLink(spellID)
+        local icon = C_Spell.GetSpellTexture(spellID)
+        return (icon and AddTexture(icon) or "") .. (link or tostring(spellID))
+    end
+
+    local function ItemText(itemID)
+        local _, link, _, _, _, _, _, _, _, icon = GetItemInfo(itemID)
+        if not icon then
+            icon = select(5, GetItemInfoInstant(itemID))
+        end
+        return (icon and AddTexture(icon) or "") .. (link or format("%s (%d)", L["饰品"], itemID))
+    end
+
+    local function TargetText(node, plan, plain)
+        if not node.targetRole then
+            return ""
+        end
+        local db = bindings[node.targetRole]
+        local name = db and db.text or ""
+        if name ~= "" then
+            if plain then
+                name = TJ.ClearCode(name)
+            elseif db.class then
+                local r, g, b = GetClassColor(db.class)
+                name = ns.RGB_16(name, r, g, b)
+            end
+        else
+            name = node.targetRole
+            for _, role in ipairs(plan.roles) do
+                if role.key == node.targetRole then
+                    name = role.name
+                    break
+                end
+            end
+        end
+        return " => " .. name
+    end
+
+    function board:GetPlanName(planID)
+        local plan = self.plans[planID or bossDB.timelinePlan]
+        return plan and plan.name or L["不使用"]
+    end
+
+    function board:GetTimelineLines(planID, onlyAssigned)
+        local lines = {}
+        local plan = self.plans[planID or bossDB.timelinePlan]
+        if not plan then
+            return lines
+        end
+        local planRoles = {}
+        for _, role in ipairs(plan.roles) do
+            planRoles[role.key] = role
+        end
+        for _, node in ipairs(plan.timeline) do
+            if node.displayOnly then
+                lines[#lines + 1] = format("%d:%02d  %s", floor(node.time / 60), node.time % 60, node.text)
+            else
+                local db = bindings[node.role]
+                local name = db and db.text or ""
+                if name ~= "" and db.class then
+                    local r, g, b = GetClassColor(db.class)
+                    name = ns.RGB_16(name, r, g, b)
+                end
+
+                if not onlyAssigned or name ~= "" then
+                    if name == "" then
+                        name = planRoles[node.role].name
+                    end
+                    local spells = {}
+                    for _, spellID in ipairs(node.spells) do
+                        spells[#spells + 1] = SpellText(spellID)
+                    end
+                    for _, itemID in ipairs(node.items or {}) do
+                        spells[#spells + 1] = ItemText(itemID)
+                    end
+                    lines[#lines + 1] = format("%d:%02d  %s  %s", floor(node.time / 60), node.time % 60,
+                        name, table.concat(spells, " + ") .. TargetText(node, plan))
+                end
+            end
+        end
+        return lines
+    end
+
+    function board:ShowTimelineTooltip(owner, planID, name)
+        GameTooltip:SetOwner(owner, "ANCHOR_NONE")
+        GameTooltip:SetPoint("TOPLEFT", TJ.MainFrame, "TOPLEFT")
+        GameTooltip:ClearLines()
+        GameTooltip:AddLine(name or self:GetPlanName(planID), 1, 1, 1)
+        local lines = self:GetTimelineLines(planID)
+        if #lines == 0 then
+            GameTooltip:AddLine(L["不使用减伤链提醒"], .7, .7, .7)
+        end
+        for _, line in ipairs(lines) do
+            GameTooltip:AddLine(line, 1, .82, 0)
+        end
+        GameTooltip:Show()
+    end
+
+    local function HideTimelineTooltip(owner)
+        if GameTooltip:GetOwner() == owner then
+            GameTooltip:Hide()
+        end
+    end
+
+    function board:GetAllQuestText(OnEnter)
+        local result, players = { {} }, {}
+        local plan = self.plans[bossDB.timelinePlan]
+        if not plan then
+            return result, players
+        end
+        for _, node in ipairs(plan.timeline) do
+            if not node.displayOnly then
+                local db = bindings[node.role]
+                local name = db and db.text and TJ.ClearCode(db.text) or ""
+                local spells = {}
+                for _, spellID in ipairs(node.spells) do
+                    if C_Spell.DoesSpellExist(spellID) then
+                        spells[#spells + 1] = TJ.ClearCode(SpellText(spellID), true, OnEnter)
+                    end
+                end
+                for _, itemID in ipairs(node.items or {}) do
+                    spells[#spells + 1] = TJ.ClearCode(ItemText(itemID), true, OnEnter)
+                end
+                if name ~= "" and #spells > 0 then
+                    local displayName = name
+                    if OnEnter then
+                        displayName = db.text
+                        if db.class then
+                            local r, g, b = GetClassColor(db.class)
+                            displayName = ns.RGB_16(displayName, r, g, b)
+                        end
+                    end
+                    local time = format("%d:%02d", floor(node.time / 60), node.time % 60)
+                    local text = table.concat(spells, " + ")
+                    result[1][#result[1] + 1] = time .. "  " .. displayName .. "  " .. text .. TargetText(node, plan, not OnEnter)
+                    players[#players + 1] = { player = name, quest = time .. " " .. text }
+                end
+            end
+        end
+        return result, players
+    end
+
+    function board:GetQuestText(OnEnter)
+        local result = self:GetAllQuestText(OnEnter)
+        local name = TJ.ClearCode(self:GetPlanName(), nil, OnEnter)
+        tinsert(result, 1, { format(OnEnter and L["通报减伤链：%s"] or L["——通报减伤链：%s——"], name) })
+        return result
+    end
+
+    function board:PrepareTimeline(isTest)
+        self.child = {}
+        local plan = self.plans[bossDB.timelinePlan]
+        if not plan then
+            return
+        end
+        local timeOffset = not isTest and parent.boardTimeOffset or 0
+        timeOffset = timeOffset or 0
+        local child = {
+            all = {},
+            bossTime = {},
+            bossSpellID = plan.bossSpellID,
+            arrange = 1,
+            startIndex = 1,
+            step = 1,
+            absoluteTime = true,
+            timeOffset = timeOffset,
+            autoHide = true,
+            canUpdate = true
+        }
+        -- 复制开战时的绑定和技能，后续编辑不会改变本场正在运行的提醒。
+        for _, node in ipairs(plan.timeline) do
+            if not node.displayOnly then
+                local db = bindings[node.role]
+                local name = db and db.text and TJ.ClearCode(db.text) or ""
+                local spellIDs = {}
+                for _, spellID in ipairs(node.spells) do
+                    if C_Spell.DoesSpellExist(spellID) then
+                        spellIDs[#spellIDs + 1] = "s" .. spellID .. "^"
+                    end
+                end
+                for _, itemID in ipairs(node.items or {}) do
+                    spellIDs[#spellIDs + 1] = "i" .. itemID .. "^"
+                end
+                local targetDB = node.targetRole and bindings[node.targetRole]
+                local target = targetDB and targetDB.text and TJ.ClearCode(targetDB.text) or ""
+                local i = #child.all + 1
+                child.all[i] = { player = name, spellIDs = table.concat(spellIDs), target = target }
+                child.bossTime[i] = node.time + timeOffset
+            end
+        end
+        child.maxIndex = #child.all
+        self.child[plan.id] = child
+    end
+
+    local status = Text(content, "", 0, 0, 13)
+    status:SetTextColor(.7, .7, .7)
+
+    local roleTitle = Text(content, L["角色绑定"], 10, 0, 15)
+    roleTitle:SetTextColor(1, .82, 0)
+
+    function board:Refresh()
+        bossDB.lastBoard = bossDB.timelinePlan
+        local plan = self.plans[bossDB.timelinePlan]
+        local shown = {}
+        if self.planDropDown then
+            LibBG:UIDropDownMenu_SetText(self.planDropDown, self.planLabels[bossDB.timelinePlan])
+        end
+        if self.timelinePreviewButton then
+            self.timelinePreviewButton:SetShown(plan ~= nil)
+        end
+        local y = -90
+        roleTitle:ClearAllPoints()
+        roleTitle:SetShown(plan ~= nil and #plan.roles > 0)
+        y = y - 30
+        local missing = 0
+        if plan then
+            for i, role in ipairs(plan.roles) do
+                local edit = self.roleEdits[role.key]
+                shown[role.key] = true
+                edit:ClearAllPoints()
+                edit:SetPoint("TOPLEFT", content, "TOPLEFT", 100, y)
+                if i == 1 then
+                    roleTitle:SetPoint("BOTTOM", content, "TOP", 0, y + 3)
+                end
+                edit.label:ClearAllPoints()
+                edit.label:SetPoint("RIGHT", edit, "LEFT", -10, 0)
+                edit.label:SetText(role.name .. "：")
+                local r, g, b = GetClassColor(role.class)
+                edit.label:SetTextColor(r, g, b)
+                edit:Show()
+                edit.label:Show()
+                if edit:GetText() == "" then
+                    missing = missing + 1
+                end
+                y = y - 28
+            end
+        end
+        for key, edit in pairs(self.roleEdits) do
+            if not shown[key] then
+                edit:Hide();
+                edit.label:Hide()
+            end
+        end
+        status:ClearAllPoints()
+        status:SetPoint("TOP", 0, y - 8)
+        status:SetText(not plan and ""
+            or (missing > 0 and format(L["还有%d个角色未选择"], missing) or L["角色已配置，悬停时间轴可查看完整减伤链"]))
+        if TJ.exportTJFrame then
+            TJ.exportTJFrame:UpdateText()
+        end
+    end
+
+    for _, key in ipairs(roleOrder) do
+        local role = roles[key]
+        local edit = CreateFrame("EditBox", nil, content, TJ.editTemplate)
+        board.roleEdits[key] = edit
+        edit:SetSize(130, 20)
+        edit:SetAutoFocus(false)
+        edit.FB, edit.bossIndex, edit.boardID, edit.name = FB, bossIndex, "timelineRoles", key
+        edit.type = "player"
+        edit.label = Text(content, role.name, -0, 0, 15)
+        edit.label:SetWidth(90)
+        edit.label:SetJustifyH("RIGHT")
+        TJ.SetEditBaseClass(edit)
+
+        function edit:Save()
+            if self:GetText() == "" then
+                bindings[key] = nil
+            else
+                bindings[key] = {
+                    text = self:GetText(),
+                    player = self.player,
+                    class = self.class,
+                    role = self.role,
+                    combatRole = self.combatRole,
+                    talent = self.talent
+                }
+            end
+        end
+
+        function edit:ClearAll()
+            self.player, self.class, self.role, self.combatRole, self.talent = nil, nil, nil, nil, nil
+            self:SetText("")
+            self:SetTextColor(1, 1, 1)
+            self:Save()
+        end
+
+        function edit:SetPlayer(playerInfo)
+            self.player, self.class = playerInfo.name, playerInfo.class
+            self.role, self.combatRole = playerInfo.role, playerInfo.combatRole
+            self.talent = TuanJian.talentInfo[playerInfo.name]
+            local r, g, b = GetClassColor(playerInfo.class)
+            self:SetTextColor(r, g, b)
+            self:SetText(TJ.GetIconAndName(playerInfo))
+            self:SetCursorPosition(0)
+            self:Save()
+        end
+
+        local db = bindings[key]
+        if db then
+            edit.player, edit.class, edit.role, edit.combatRole, edit.talent = db.player, db.class, db.role, db.combatRole, db.talent
+            edit:SetText(db.text or "")
+            if db.class then
+                local r, g, b = GetClassColor(db.class)
+                edit:SetTextColor(r, g, b)
+            end
+            edit:SetCursorPosition(0)
+        end
+
+        edit:HookScript("OnTextChanged", function(self)
+            if self:GetText() == "" then
+                self.player, self.class, self.role, self.combatRole, self.talent = nil, nil, nil, nil, nil
+                self:SetTextColor(1, 1, 1)
+            end
+            self:Save()
+            board:Refresh()
+        end)
+
+        edit:HookScript("OnEditFocusGained", function(self)
+            if InCombatLockdown() then
+                self:ClearFocus();
+                return
+            end
+            TJ.lastfocus = self
+            TJ.ListPlayer(self, { role.class })
+        end)
+
+        edit:HookScript("OnEditFocusLost", function(self)
+            self:Save()
+            if TJ.FramePlayerList then
+                TJ.FramePlayerList:Hide()
+            end
+        end)
+    end
+
+    -- 方案选择
+    do
+        local planTitle = Text(content, L["减伤方案："] , 0, -20, 15)
+        planTitle:SetWidth(90)
+        planTitle:SetJustifyH("RIGHT")
+
+        local dropDown = LibBG:Create_UIDropDownMenu(nil, content)
+        dropDown:SetPoint("LEFT", planTitle, "RIGHT", -10, -4)
+        LibBG:UIDropDownMenu_SetWidth(dropDown, 200)
+        LibBG:UIDropDownMenu_SetAnchor(dropDown, 0, 0, "TOP", dropDown, "BOTTOM")
+        TJ.dropDownToggle(dropDown)
+        board.planDropDown = dropDown
+        board.planLabels[0] = L["不使用"]
+        for _, plan in ipairs(plans) do
+            board.planLabels[plan.id] = plan.name
+        end
+
+        local function AddPlanOption(id, name)
+            local info = LibBG:UIDropDownMenu_CreateInfo()
+            info.text = name
+            info.checked = bossDB.timelinePlan == id
+            info.func = function()
+                if id == 0 or not InCombatLockdown() then
+                    if TJ.isBoardTesting then
+                        TJ.StopTestBoard()
+                    elseif id == 0 then
+                        TJ.Board_ENCOUNTER_END()
+                        TJ.Board_HideAllBar()
+                    end
+                    if TJ.lastfocus then
+                        TJ.lastfocus:ClearFocus()
+                    end
+                    bossDB.timelinePlan = id
+                    bossDB.lastBoard = id
+                    TJ.PlaySound(1)
+                end
+                GameTooltip:Hide()
+                board:Refresh()
+            end
+
+            local button = LibBG:UIDropDownMenu_AddButton(info)
+            button.tjTimelinePreview = { board = board, id = id, name = name, func = info.func }
+            if not button.tjTimelinePreviewHooked then
+                button.tjTimelinePreviewHooked = true
+                button:HookScript("OnEnter", function(self)
+                    local preview = self.tjTimelinePreview
+                    -- 菜单按钮会被其他下拉菜单复用，仅处理当前方案选项。
+                    if not preview or self.func ~= preview.func then
+                        return
+                    end
+                    preview.board:ShowTimelineTooltip(self, preview.id, preview.name)
+                end)
+
+                button:HookScript("OnLeave", HideTimelineTooltip)
+                button:HookScript("OnHide", HideTimelineTooltip)
+            end
+        end
+
+        LibBG:UIDropDownMenu_Initialize(dropDown, function()
+            AddPlanOption(0, L["不使用"])
+            for _, plan in ipairs(plans) do
+                AddPlanOption(plan.id, plan.name)
+            end
+        end)
+
+        local preview = TJ.CreateButton(content)
+        preview:SetSize(120, 25)
+        preview:SetPoint("TOP", content, "TOP", 0, -52)
+        preview:SetText(L["预览时间轴"])
+        board.timelinePreviewButton = preview
+        preview:SetScript("OnEnter", function(self)
+            board:ShowTimelineTooltip(self)
+        end)
+        preview:SetScript("OnLeave", HideTimelineTooltip)
+        preview:SetScript("OnHide", HideTimelineTooltip)
+    end
+
+    function board.AutoFuc()
+        local plan = board.plans[bossDB.timelinePlan]
+        if not plan then
+            return
+        end
+        local used = {}
+        for _, role in ipairs(plan.roles) do
+            local edit = board.roleEdits[role.key]
+            if edit.player then
+                used[edit.player] = true
+            end
+        end
+        for _, role in ipairs(plan.roles) do
+            local edit = board.roleEdits[role.key]
+            if edit:GetText() == "" then
+                for _, playerInfo in ipairs(TJ.SortRaidRosterInfo({ role.class }, role.role, true)) do
+                    if not used[playerInfo.name] and (not role.talent or TuanJian.talentInfo[playerInfo.name] == role.talent) then
+                        edit:SetPlayer(playerInfo)
+                        used[playerInfo.name] = true
+                        break
+                    end
+                end
+            end
+        end
+        board:Refresh()
+    end
+
+    function board:ClearTimeline(planID, keepPlan)
+        if TJ.isBoardTesting then
+            TJ.StopTestBoard()
+        else
+            TJ.Board_ENCOUNTER_END()
+            TJ.Board_HideAllBar()
+        end
+        local plan = self.plans[planID or bossDB.timelinePlan]
+        if planID ~= nil then
+            for _, role in ipairs(plan and plan.roles or {}) do
+                self.roleEdits[role.key]:ClearAll()
+            end
+        else
+            for _, edit in pairs(self.roleEdits) do
+                edit:ClearAll()
+            end
+            wipe(bindings)
+            if not keepPlan then
+                bossDB.timelinePlan = 0
+            end
+        end
+        self:Refresh()
+    end
+
+    -- 重置按钮
+    do
+        local reset = CreateFrame("Button", nil, board)
+        reset:SetSize(18, 18)
+        reset:SetPoint("TOPRIGHT", board, "BOTTOMRIGHT", -10, 40)
+        reset:SetNormalTexture("interface/raidframe/readycheck-notready")
+        reset:SetHighlightTexture("interface/raidframe/readycheck-notready")
+        reset:RegisterForClicks("AnyUp")
+
+        reset:SetScript("OnClick", function(_, button)
+            TJ.PlaySound(1)
+            if button == "RightButton" then
+                if TJ.isBoardTesting then
+                    TJ.StopTestBoard()
+                else
+                    TJ.Board_ENCOUNTER_END()
+                    TJ.Board_HideAllBar()
+                end
+                bossDB.timelinePlan = 0
+                board:Refresh()
+            else
+                board:ClearTimeline(nil, true)
+            end
+        end)
+
+        reset:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:ClearLines()
+            GameTooltip:AddLine(L["重置减伤链"], 1, 1, 1)
+            GameTooltip:AddLine(AddTexture("LEFT") .. L["清空所有角色"], 1, .82, 0)
+            GameTooltip:AddLine(AddTexture("RIGHT") .. L["不使用减伤链"], 1, .82, 0)
+            GameTooltip:Show()
+        end)
+
+        reset:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+    end
+
+    board:SetScript("OnShow", function()
+        TJ.UpdateBoardVerFramePoint()
+    end)
+    board:SetScript("OnMouseDown", function()
+        if TJ.lastfocus then
+            TJ.lastfocus:ClearFocus()
+        end
+        TJ.MainFrame:StartMoving()
+    end)
+    board:SetScript("OnMouseUp", function()
+        TJ.MainFrame:StopMovingOrSizing()
+    end)
+    content:SetScript("OnMouseDown", board:GetScript("OnMouseDown"))
+    content:SetScript("OnMouseUp", board:GetScript("OnMouseUp"))
+
+    bossDB.lastBoard = bossDB.timelinePlan
+    board:Refresh()
+    return board
+end
+
 function TJ.UpdateBoardSpellType(child, spellTbl)
     for i, v in ipairs(spellTbl) do
         TJ.CreateBoardSpellTitle(child, v.title)
@@ -606,6 +1223,12 @@ function TJ.Board_SetBar(bossSpellID, index, player, durTime, spellIDs, autoHide
 end
 
 local function SetBar(tbl, arrange, bossSpellID, index, durationTime, autoHide, now, target)
+    if tbl.spellIDs then
+        if tbl.player ~= "" and tbl.spellIDs ~= "" then
+            TJ.Board_SetBar(bossSpellID, index, tbl.player, durationTime, tbl.spellIDs, autoHide, now, tbl.target or target)
+        end
+        return
+    end
     local players = {}
     for i = 1, arrange do
         local player = TJ.ClearCode(tbl.edits[i].playerEdit:GetText())
@@ -710,6 +1333,7 @@ function TJ.Board_ENCOUNTER_START(FB, bossIndex, isTest)
     end
     info.FB = FB
     info.bossIndex = bossIndex
+    if board.PrepareTimeline then board:PrepareTimeline(isTest) end
     if TJ.frame[FB][bossIndex].Board_ENCOUNTER_START then
         TJ.frame[FB][bossIndex].Board_ENCOUNTER_START(info)
     end
@@ -736,6 +1360,32 @@ function TJ.Board_ENCOUNTER_START(FB, bossIndex, isTest)
                     updateFrame.t = updateFrame.t + t
                     local index = info[bossSpellID].index
                     local maxIndex = info[bossSpellID].maxIndex
+                    -- 固定时间轴使用开战累计时间，不经过逐轮重置和延迟推进。
+                    if info[bossSpellID].absoluteTime then
+                        local state = info[bossSpellID]
+                        local oldIndex = index
+                        while index <= maxIndex and updateFrame.t >= state.bossTime[index] do
+                            index = index + state.step
+                        end
+                        if index ~= oldIndex then
+                            if not state.autoHide then
+                                TJ.Board_HideBar(bossSpellID)
+                            end
+                            state.index = index
+                            state.canUpdate = true
+                            -- 留出自动隐藏的交接时间，下一条仍按原时间点结束。
+                            state.nextShowTime = updateFrame.t + 0.5
+                        end
+                        if index > maxIndex then
+                            updateFrame:SetScript("OnUpdate", nil)
+                        elseif state.canUpdate and updateFrame.t >= (state.nextShowTime or 0)
+                            and state.bossTime[index] - updateFrame.t <= TuanJian.options.boardTipsTime then
+                            state.canUpdate = nil
+                            SetBar(state.child.all[index], arrange, bossSpellID, index,
+                                state.bossTime[index] - updateFrame.t, state.autoHide, state.now, state.target)
+                        end
+                        return
+                    end
                     if index > 0 and index <= maxIndex then
                         local child = info[bossSpellID].child
                         local bossTime = info[bossSpellID].bossTime
@@ -833,6 +1483,10 @@ function TJ.PairAllEdit_BoardPlayer(func, FB, bossIndex)
     local bossIndex = bossIndex or TuanJian.bossIndex
     local board = TJ.frame[FB][bossIndex].board
     if board then
+        if board.roleEdits then
+            for _, edit in pairs(board.roleEdits) do func(edit) end
+            return
+        end
         for _, child in pairs(board.child) do
             for _, v in ipairs(child.all) do
                 for _, vv in ipairs(v.edits) do
@@ -848,6 +1502,10 @@ function TJ.PairAllEdit_Board(func, FB, bossIndex)
     local bossIndex = bossIndex or TuanJian.bossIndex
     local board = TJ.frame[FB][bossIndex].board
     if board then
+        if board.roleEdits then
+            for _, edit in pairs(board.roleEdits) do func(edit) end
+            return
+        end
         for _, child in pairs(board.child) do
             for _, v in ipairs(child.all) do
                 for _, vv in ipairs(v.edits) do
@@ -897,7 +1555,9 @@ function TJ.ClearBoard(_FB, _bossIndex, boardID)
                     if parent then
                         local board = parent.board
                         if board then
-                            if boardID then
+                            if board.ClearTimeline then
+                                board:ClearTimeline(boardID)
+                            elseif boardID then
                                 local child = board.child[boardID]
                                 for _, v in ipairs(child.all) do
                                     for _, vv in ipairs(v.edits) do

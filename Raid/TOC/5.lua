@@ -56,7 +56,7 @@ local function P3fuc(f, bt, playerTbl, info)
 
         local combat = TJ.GetCombatLog()
         local duration = combat.duration
-        local t = f:CreateFontString()
+        local t = TJ.CreateCombatFontString(f)
         t:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
         t:SetPoint("BOTTOM", f, "BOTTOM", 0, 5)
         t:SetTextColor(1, 0.82, 0)
@@ -99,7 +99,7 @@ local function P3fuc2(f, bt, playerTbl, info)
 
     local combat = TJ.GetCombatLog()
     local duration = combat.duration
-    local t = f:CreateFontString()
+    local t = TJ.CreateCombatFontString(f)
     t:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
     t:SetPoint("BOTTOM", f, "BOTTOM", 0, 5)
     t:SetTextColor(1, 0.82, 0)

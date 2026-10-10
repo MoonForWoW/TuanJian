@@ -1,4 +1,4 @@
-local AddonName, ns = ...
+﻿local AddonName, ns = ...
 
 local LibBG = ns.LibBG
 local L = ns.L
@@ -24,6 +24,46 @@ local newLog, newEvent, newTime
 TJ.combatLogEvent = {}
 TJ.boardEvent = {}
 local boardEvent = TJ.boardEvent
+
+local cacheAccess = 0
+local function TouchCombatLogCache(entry)
+    cacheAccess = cacheAccess + 1
+    entry.lastUsed = cacheAccess
+end
+
+function TJ.TrimCombatLogCache()
+    local limit = math.max(1, math.min(20,
+        math.floor(tonumber(TuanJian.options.combatLogCacheCount) or 3)))
+    local selectedLog = TuanJian.combatLog[TJ.combatLogIndex]
+    local selectedTime = selectedLog and selectedLog.time
+    local count = 0
+    for _, entry in pairs(TJ.combatLogEvent) do
+        if entry.persisted then count = count + 1 end
+    end
+    while count > limit do
+        local oldestTime, oldestAccess
+        for eventTime, entry in pairs(TJ.combatLogEvent) do
+            -- 未保存完成的事件表不计入限额，当前查看/记录的日志不能被淘汰。
+            if entry.persisted and eventTime ~= selectedTime and eventTime ~= newTime then
+                local access = entry.lastUsed or 0
+                if not oldestAccess or access < oldestAccess then
+                    oldestTime, oldestAccess = eventTime, access
+                end
+            end
+        end
+        if not oldestTime then break end
+        TJ.combatLogEvent[oldestTime] = nil
+        count = count - 1
+    end
+end
+
+local function ForgetCombatLogCache(eventTime)
+    local state = TJ._decompressState
+    if state and state.eventTime == eventTime then
+        TJ.CancelDecompress(state.FB, state.bossIndex)
+    end
+    TJ.combatLogEvent[eventTime] = nil
+end
 
 local function GetEncounterID(bossID)
     for i, vv in ipairs(TJ.FBtbl) do
@@ -68,7 +108,9 @@ do
     function TJ.GetCombatLogEvent(combatLogIndex)
         local combatLog = TuanJian.combatLog[combatLogIndex or TJ.combatLogIndex]
         if combatLog and combatLog.time and TJ.combatLogEvent[combatLog.time] then
-            return TJ.combatLogEvent[combatLog.time].event, TJ.combatLogEvent[combatLog.time]
+            local entry = TJ.combatLogEvent[combatLog.time]
+            TouchCombatLogCache(entry)
+            return entry.event, entry
         end
     end
 end
@@ -79,10 +121,11 @@ function TJ.ClearCombatLog(FB, bossIndex, combatLogTime)
         local combatLog = TuanJian.combatLog[i]
         if combatLog.FB == FB and (not bossIndex or combatLog.bossIndex == bossIndex)
             and (not combatLogTime or combatLog.time == combatLogTime) then
-            TJ.combatLogEvent[combatLog.time] = nil
+            ForgetCombatLogCache(combatLog.time)
             tremove(TuanJian.combatLog, i)
         end
     end
+    TJ.TrimCombatLogCache()
     TJ.UpdateDispelFrameDelay()
 end
 
@@ -103,7 +146,7 @@ function TJ.ClearOutCombatLog()
         for i = #TuanJian.combatLog, 1, -1 do
             local combatLog = TuanJian.combatLog[i]
             if TJ.ValueInTable(needDeleteLog, i) then
-                TJ.combatLogEvent[combatLog.time] = nil
+                ForgetCombatLogCache(combatLog.time)
                 tremove(TuanJian.combatLog, i)
             end
         end
@@ -113,10 +156,11 @@ function TJ.ClearOutCombatLog()
     for i = #TuanJian.combatLog, 1, -1 do
         local combatLog = TuanJian.combatLog[i]
         if i > saveLogCount then
-            TJ.combatLogEvent[combatLog.time] = nil
+            ForgetCombatLogCache(combatLog.time)
             tremove(TuanJian.combatLog, i)
         end
     end
+    TJ.TrimCombatLogCache()
 end
 
 local auraType = { HELPFUL = 40, HARMFUL = 20 }
@@ -252,6 +296,7 @@ function TJ.ENCOUNTER_START(self, event, bossID, bossName, difficultyID, groupSi
             titleColor = {},
             event = newEvent,
         }
+        TouchCombatLogCache(TJ.combatLogEvent[newTime])
 
         TJ.ClearOutCombatLog()
 
@@ -260,7 +305,7 @@ function TJ.ENCOUNTER_START(self, event, bossID, bossName, difficultyID, groupSi
             TJ.setRTinCombat = TuanJian.options[frame.autoRT] == 1
         end
         if frame.ENCOUNTER_START then
-            frame.ENCOUNTER_START()
+            frame.ENCOUNTER_START(difficultyID, isDBM)
         end
         TJ.Board_ENCOUNTER_START(FB, bossIndex)
         -- 记录已有光环、团队成员、宠物信息
@@ -296,7 +341,7 @@ function TJ.ENCOUNTER_END(self, event, bossID, bossName, difficultyID, groupSize
             combatLog.duration = TJ.GetDurTime()
         end
         if TJ.frame[FB][bossIndex].ENCOUNTER_END then
-            TJ.frame[FB][bossIndex].ENCOUNTER_END()
+            TJ.frame[FB][bossIndex].ENCOUNTER_END(success)
         end
         if success == 1 then
             if TuanJian.options.showUIAfterKillBossSuccess == 1 then
@@ -323,6 +368,7 @@ function TJ.ENCOUNTER_END(self, event, bossID, bossName, difficultyID, groupSize
         newLog = nil
         newEvent = nil
         newTime = nil
+        TJ.TrimCombatLogCache()
     end
 end
 
@@ -507,7 +553,7 @@ local function COMBAT_LOG_EVENT_UNFILTERED(_, _, ...)
     -- pt(...)
     local FB = TJ.combatLastFB
     local bossIndex = TJ.combatLastBossIndex
-    local _, subevent, _, sourceGUID, sourceName, _, _, destGUID, destName = ...
+    local _, subevent, _, sourceGUID, sourceName, _, sourceRaidFlags, destGUID, destName, _, destRaidFlags = ...
     if subevent == "SPELL_SUMMON" and select(2, IsInInstance()) == "raid" then
         summon[destGUID] = {
             ownerName = sourceName,
@@ -558,18 +604,21 @@ local function COMBAT_LOG_EVENT_UNFILTERED(_, _, ...)
 
     local sourceGuidIndex = SaveGUID(FB, bossIndex, sourceGUID, sourceName)
     local destGuidIndex = SaveGUID(FB, bossIndex, destGUID, destName)
-    local tbl = { ... }
-    tbl[1] = now
-    tbl[2] = nil
-    tbl[3] = nil
-    tbl[4] = sourceGuidIndex
-    tbl[5] = nil
-    tbl[6] = nil
-    tbl[7] = CheckFlags(tbl[7])
-    tbl[8] = destGuidIndex
-    tbl[9] = nil
-    tbl[10] = nil
-    tbl[11] = CheckFlags(tbl[11])
+    -- 直接构造保留字段；第12项起的事件参数仍使用原始索引。
+    local tbl = {
+        now,
+        nil,
+        nil,
+        sourceGuidIndex,
+        nil,
+        nil,
+        CheckFlags(sourceRaidFlags),
+        destGuidIndex,
+        nil,
+        nil,
+        CheckFlags(destRaidFlags),
+        select(12, ...),
+    }
     TJ.eventCount = TJ.eventCount + 1
     tbl.i = TJ.eventCount
     SaveHP(tbl, destGUID, destName, subevent)
@@ -771,228 +820,137 @@ do
         if msg == L['很好，我会制造一个空间来隔离你们的腐蚀。'] and TJ.IsMOP then
             TJ.ENCOUNTER_START(nil, nil, 1624, nil, nil, nil, nil, nil)
         end
+        if not TJ.startTime and select(8, GetInstanceInfo()) == 603 then
+            if msg and (msg:find("我不是来这里跟你们打架的", 1, true)
+                or msg:find("如果我的分析结果表明", 1, true)) then
+                TJ.algalonFirstPull = true
+            end
+        end
     end)
 end
 
 -- 压缩并保存战斗事件
 do
-    local batchSize1 = 15
-    local batchSize2 = 250
-    local batchSizeBuildEvent = batchSize2 -- 构建eventList/events时每帧处理的子表元素数量
-    local processors = {}
-    local function TblToString(tbl)
-        local text = ""
+    local recordsPerFrame = 10  -- 保持原来的每帧转换上限。
+    local recordsPerBlock = 500 -- 文本缓冲达到上限就压缩，不积累整场文本。
+    local saveQueue = {}
+    local activeSave
+
+    local function IsLogRetained(combatLog)
+        for _, log in ipairs(TuanJian.combatLog) do
+            if log == combatLog then return true end
+        end
+        return false
+    end
+
+    local function TblToString(tbl, fields)
+        wipe(fields)
         for k, v in pairs(tbl) do
             if k and v then
                 if type(v) == "boolean" then
                     v = "t"
                 end
-                text = text .. k .. "^" .. v .. "!"
+                fields[#fields + 1] = k .. "^" .. v .. "!"
             end
         end
-        return text
+        return table.concat(fields)
     end
-    function TJ.SaveCombatEvents(FB, bossIndex)
-        -- 检查源数据是否存在
-        local sourceEventTbl = newEvent
-        local eventTime = newTime
-        if not (sourceEventTbl and eventTime) then return end
 
-        -- 生成唯一处理器标识，用于取消机制
-        local processorKey = GetTime()
-        -- 清空旧处理器（确保同一时间只有一个处理任务）
-        wipe(processors)
-        processors[processorKey] = true
+    local function FlushBlock(state)
+        if #state.buffer == 0 then return end
+        local text = table.concat(state.buffer, "~")
+        tinsert(state.saved[state.currentEvent], C_EncodingUtil.CompressString(text))
+        wipe(state.buffer)
+    end
 
-        -- ====================== 分帧构建 eventList 和 events 的核心状态 ======================
-        local buildState = {
-            sourceTbl = sourceEventTbl, -- 源数据：TJ["event"..FB..bossIndex]
-            mainKeys = {},              -- 源数据的事件名列表（提前提取，保证遍历顺序）
-            mainIdx = 1,                -- 当前处理的事件在mainKeys中的索引
-            subIdx = 1,                 -- 当前事件下子表的处理索引
-            eventList = {},             -- 最终要构建的eventList
-            events = {},                -- 最终要构建的events
-            isBuildComplete = false     -- 标记事件列表是否构建完成
-        }
-
-        -- 第一步：提前提取源数据的所有事件名（一次性操作，避免分帧中重复调用pairs）
-        for eventName in pairs(sourceEventTbl) do
-            tinsert(buildState.mainKeys, eventName)
-        end
-
-        -- ====================== 第一阶段：分帧构建 eventList 和 events ======================
-        local function buildEventListFrame()
-            -- 检查是否已被取消或构建完成
-            if not processors[processorKey] or buildState.isBuildComplete then
-                return
-            end
-
-            local processedCount = 0 -- 本帧已处理的子表元素数量
-
-            -- 循环处理，直到达到每帧处理上限或所有数据处理完毕
-            while processedCount < batchSizeBuildEvent do
-                -- 1. 检查是否已遍历完所有事件
-                if buildState.mainIdx > #buildState.mainKeys then
-                    buildState.isBuildComplete = true
+    local function ProcessSaveFrame()
+        local state = activeSave
+        if not state then return end
+        local finished = not IsLogRetained(state.log)
+        local processed = 0
+        while not finished and processed < recordsPerFrame do
+            if not state.currentEvent then
+                state.currentEvent = state.eventNames[state.eventIndex]
+                if not state.currentEvent then
+                    state.log.event = state.saved
+                    local entry = TJ.combatLogEvent[state.log.time]
+                    if entry then entry.persisted = true end
+                    finished = true
                     break
                 end
+                state.saved[state.currentEvent] = {}
+                state.recordIndex = 1
+            end
 
-                -- 2. 获取当前要处理的事件及其子表
-                local currentEvent = buildState.mainKeys[buildState.mainIdx]
-                local currentSubTbl = buildState.sourceTbl[currentEvent]
-
-                -- 3. 处理当前事件的子表（tbl1）中的元素（tbl2）
-                if currentSubTbl and buildState.subIdx <= #currentSubTbl then
-                    -- 提取当前子表元素并插入eventList
-                    local subItem = currentSubTbl[buildState.subIdx]
-                    tinsert(buildState.eventList, {
-                        event = currentEvent,
-                        tbl = subItem
-                    })
-
-                    -- 更新计数和索引
-                    buildState.subIdx = buildState.subIdx + 1
-                    processedCount = processedCount + 1
-                else
-                    -- 4. 当前事件的子表已处理完毕，将事件名插入events
-                    tinsert(buildState.events, currentEvent)
-                    -- 切换到下一个事件，重置子表索引
-                    buildState.mainIdx = buildState.mainIdx + 1
-                    buildState.subIdx = 1
+            local records = state.source[state.currentEvent]
+            if state.recordIndex <= #records then
+                state.buffer[#state.buffer + 1] = TblToString(records[state.recordIndex], state.fields)
+                state.recordIndex = state.recordIndex + 1
+                processed = processed + 1
+                if #state.buffer >= recordsPerBlock then
+                    FlushBlock(state)
                 end
+            else
+                FlushBlock(state)
+                state.currentEvent = nil
+                state.eventIndex = state.eventIndex + 1
             end
-
-            -- 5. 更新构建阶段的进度显示
-            local totalEvents = #buildState.mainKeys
-            local processedEvents = buildState.mainIdx - 1
-            -- 计算当前事件的子表处理进度
-            if buildState.mainIdx <= totalEvents then
-                local currentSubTbl = buildState.sourceTbl[buildState.mainKeys[buildState.mainIdx]]
-                local subTotal = currentSubTbl and #currentSubTbl or 0
-                local subProcessed = buildState.subIdx - 1
-                processedEvents = processedEvents + (subProcessed / math.max(subTotal, 1))
-            end
-
-            -- 6. 继续分帧处理，或进入下一阶段（构建完成后处理TblToString）
-            if buildState.isBuildComplete then
-                -- ====================== 第二阶段：分帧处理 TblToString 转换 ======================
-                local tbl = {}
-                local index = 1
-                local total = #buildState.eventList -- 使用分帧构建好的eventList
-
-                local function processFrame()
-                    if not processors[processorKey] then return end
-
-                    local processed = 0
-                    -- 每帧处理batchSize1个元素的TblToString转换
-                    while index <= total and processed < batchSize1 do
-                        local item = buildState.eventList[index]
-                        if not tbl[item.event] then
-                            tbl[item.event] = {}
-                        end
-                        -- 转换并插入结果表
-                        tinsert(tbl[item.event], TblToString(item.tbl))
-                        index = index + 1
-                        processed = processed + 1
-                    end
-
-                    -- 转换完成，进入第三阶段（字符串拼接与压缩）
-                    if index > total then
-                        -- ====================== 第三阶段：分帧拼接字符串并压缩 ======================
-                        local eventIndex = 1
-                        local strStartIndex = 1
-                        local saveTbl = {}
-                        local currentEvent = nil
-
-                        local function ProcessBatch()
-                            if not processors[processorKey] then return end
-
-                            local processed = 0
-                            while processed < batchSize2 do
-                                -- 切换到下一个事件
-                                if not currentEvent then
-                                    currentEvent = buildState.events[eventIndex]
-                                    -- 所有事件处理完成
-                                    if not currentEvent then
-                                        for i, v in ipairs(TuanJian.combatLog) do
-                                            if v.time == eventTime then
-                                                TuanJian.combatLog[i].event = saveTbl
-                                                break
-                                            end
-                                        end
-                                        processors[processorKey] = nil
-                                        TJ.UpdateTitleColor(FB, bossIndex)
-                                        return
-                                    end
-                                    -- 初始化当前事件的存储表
-                                    saveTbl[currentEvent] = {}
-                                    strStartIndex = 1
-                                end
-
-                                -- 处理当前事件的字符串列表
-                                local strList = tbl[currentEvent]
-                                if strList and #strList > 0 then
-                                    -- 计算本帧处理的字符串范围
-                                    local strEndIndex = math.min(
-                                        strStartIndex + (batchSize2 - processed) - 1,
-                                        #strList
-                                    )
-                                    -- 批量拼接（利用table.concat的索引参数优化）
-                                    local batchStr = table.concat(strList, "~", strStartIndex, strEndIndex)
-                                    -- 压缩并保存
-                                    tinsert(saveTbl[currentEvent], C_EncodingUtil.CompressString(batchStr))
-
-                                    -- 更新计数和索引
-                                    local processedThisBatch = strEndIndex - strStartIndex + 1
-                                    processed = processed + processedThisBatch
-                                    strStartIndex = strEndIndex + 1
-
-                                    -- 当前事件的字符串处理完毕
-                                    if strStartIndex > #strList then
-                                        currentEvent = nil
-                                        eventIndex = eventIndex + 1
-                                    end
-                                else
-                                    -- 空列表，直接切换下一个事件
-                                    currentEvent = nil
-                                    eventIndex = eventIndex + 1
-                                end
-
-                                if processed >= batchSize2 then
-                                    break
-                                end
-                            end
-                            -- 继续下帧处理
-                            After(0, ProcessBatch)
-                        end
-
-                        -- 启动第三阶段
-                        After(0, ProcessBatch)
-                        return
-                    end
-
-                    -- 继续下帧转换
-                    After(0, processFrame)
-                end
-
-                -- 启动第二阶段
-                After(0, processFrame)
-                return
-            end
-
-            -- 继续下帧构建事件列表
-            After(0, buildEventListFrame)
         end
 
-        -- 启动第一阶段（分帧构建eventList和events）
-        After(0, buildEventListFrame)
+        if finished then
+            local FB, bossIndex = state.FB, state.bossIndex
+            local retained = IsLogRetained(state.log)
+            -- 保留缓存中的原始事件，只释放保存任务自身的临时引用。
+            state.source = nil
+            state.log = nil
+            state.saved = nil
+            state.buffer = nil
+            state.fields = nil
+            state.eventNames = nil
+            activeSave = tremove(saveQueue, 1)
+            if retained then
+                TJ.TrimCombatLogCache()
+                TJ.UpdateTitleColor(FB, bossIndex)
+            end
+        end
+        if activeSave then
+            After(0, ProcessSaveFrame)
+        end
+    end
+
+    function TJ.SaveCombatEvents(FB, bossIndex)
+        if not (newEvent and newTime and newLog) then return end
+        if activeSave and activeSave.log == newLog then return end
+        for _, state in ipairs(saveQueue) do
+            if state.log == newLog then return end
+        end
+        local eventNames = {}
+        for eventName in pairs(newEvent) do
+            tinsert(eventNames, eventName)
+        end
+        local state = {
+            FB = FB,
+            bossIndex = bossIndex,
+            log = newLog,
+            source = newEvent,
+            eventNames = eventNames,
+            eventIndex = 1,
+            saved = {},
+            buffer = {},
+            fields = {},
+        }
+        if activeSave then
+            -- 连续战斗的日志依次保存，避免新任务取消上一份尚未保存的日志。
+            tinsert(saveQueue, state)
+        else
+            activeSave = state
+            After(0, ProcessSaveFrame)
+        end
     end
 end
 
 -- 解压战斗事件
 do
-    local lastFB
-    local lastBossIndex
     local DECOMPRESS_BATCH = {
         eventPerFrame = 1,  -- 每帧处理的事件数量
         textPerEvent = 10,  -- 每个事件下每帧处理的文本数量
@@ -1057,18 +1015,32 @@ do
                 iter2 = nil, -- 第二层迭代器（!分割）
                 state2 = nil,
                 start2 = nil,
-                part2 = nil,         -- 当前!分割块
+                part2 = nil,      -- 当前!分割块
                 pos2 = nil,
-                currentTbl1 = nil    -- 当前~块对应的子表（对应原tbl1）
+                currentTbl1 = nil -- 当前~块对应的子表（对应原tbl1）
             },
-            isComplete = false,      -- 整体处理完成标记
-            processorKey = GetTime() -- 唯一标识（用于取消机制）
+            isComplete = false,   -- 整体处理完成标记
         }
     end
+
+    local function ReleaseDecompressState(state)
+        state.isComplete = true
+        if TJ._decompressState == state then
+            TJ._decompressState = nil
+        end
+        state.source = nil
+        state.target = nil
+        state.eventList = nil
+        state.currentEvent = nil
+        state.currentText = nil
+        state.currentTextTbl = nil
+        state.strParseState = nil
+    end
+
     -- 核心：分帧处理解压与解析的单步逻辑
     local function processDecompressFrame(state)
         -- 1. 检查是否已取消或处理完成
-        if not state or state.isComplete or not (state.FB == lastFB and state.bossIndex == lastBossIndex) then
+        if not state or state.isComplete or TJ._decompressState ~= state then
             return
         end
 
@@ -1078,7 +1050,6 @@ do
         if not state.currentEvent then
             -- 所有事件已处理完成
             if state.eventIdx > #state.eventList then
-                state.isComplete = true
                 -- 赋值最终结果
                 TJ.combatLogEvent[state.eventTime] = {
                     FB = state.FB,
@@ -1086,11 +1057,18 @@ do
                     time = state.eventTime,
                     titleColor = {},
                     event = state.target,
+                    persisted = true,
                 }
-                -- 隐藏进度条（如果有）
+                TouchCombatLogCache(TJ.combatLogEvent[state.eventTime])
+                TJ.TrimCombatLogCache()
+                local FB, bossIndex = state.FB, state.bossIndex
+                ReleaseDecompressState(state)
+                -- 延迟回调只保留界面位置，不再引用整个解压状态。
                 After(1, function()
-                    if TJ["processText" .. state.FB .. state.bossIndex] then
-                        TJ["processText" .. state.FB .. state.bossIndex]:Hide()
+                    local active = TJ._decompressState
+                    if active and active.FB == FB and active.bossIndex == bossIndex then return end
+                    if TJ["processText" .. FB .. bossIndex] then
+                        TJ["processText" .. FB .. bossIndex]:Hide()
                     end
                 end)
                 TJ.UpdateTitleColor()
@@ -1183,6 +1161,7 @@ do
             -- 5. 检查当前文本是否解析完成
             if not strState.part1 then
                 state.currentText = nil           -- 标记当前文本处理完成
+                state.strParseState = nil
                 state.textIdx = state.textIdx + 1 -- 切换到下一个文本
             end
         end
@@ -1190,6 +1169,7 @@ do
         -- 6. 检查当前事件是否处理完成
         if state.textIdx > #eventTexts then
             state.currentEvent = nil            -- 标记当前事件处理完成
+            state.currentTextTbl = nil
             state.eventIdx = state.eventIdx + 1 -- 切换到下一个事件
         end
 
@@ -1227,16 +1207,20 @@ do
             TJ.CancelDecompress(oldState.FB, oldState.bossIndex)
         end
 
-        if not TJ.combatLogIndex then return end
+        local combatLog = TJ.GetCombatLog()
+        if not combatLog then
+            TJ.TrimCombatLogCache()
+            return
+        end
         -- 如果已经解压过，则直接返回
-        local eventTime = TuanJian.combatLog[TJ.combatLogIndex].time
+        local eventTime = combatLog.time
         if TJ.combatLogEvent[eventTime] then
+            TouchCombatLogCache(TJ.combatLogEvent[eventTime])
+            TJ.TrimCombatLogCache()
             return
         end
 
         -- 创建新的分帧处理状态
-        lastFB = FB
-        lastBossIndex = bossIndex
         local newState = createDecompressState(FB, bossIndex, eventTime)
         TJ._decompressState = newState -- 保存状态到全局（用于后续终止）
         processDecompressFrame(newState)
@@ -1245,8 +1229,7 @@ do
     -- 停止解压
     function TJ.CancelDecompress(FB, bossIndex)
         if TJ._decompressState and TJ._decompressState.FB == FB and TJ._decompressState.bossIndex == bossIndex then
-            TJ._decompressState.isComplete = true
-            TJ._decompressState = nil
+            ReleaseDecompressState(TJ._decompressState)
             if TJ["processText" .. FB .. bossIndex] then
                 TJ["processText" .. FB .. bossIndex]:Hide()
             end
