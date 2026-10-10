@@ -38,6 +38,7 @@ Raid\Board.lua
 Raid\BoardWA.lua
 exportMap.lua
 options.lua
+Thanks.lua
 TuanJian.lua
 RaidTarget.lua
 TJ_WLK.lua

@@ -151,6 +151,8 @@ TJ.Init(function()
             self.optionFrame:SetWidth(self.scroll:GetWidth())
         end)
 
+        TJ.InitThanksPage()
+
         -- 更新日记窗口
         TJ.Init2(function()
             -- TuanJian.options.SearchHistory[ns.updateText_now[1]] = nil
@@ -308,6 +310,7 @@ TJ.Init(function()
         TJ.ssMainFrameTabNum = 7
         TJ.gjMainFrameTabNum = 8
         TJ.equipMainFrameTabNum = 9
+        TJ.thanksMainFrameTabNum = 10
 
         local r, g, b = GetClassRGB(nil, "player")
         local blackup = CreateColor(.3, .3, .3, .7)
@@ -349,6 +352,10 @@ TJ.Init(function()
                     TJ.sendButton:UpdateParent(v.frame)
                     TJ.autoButton:UpdateParent(v.frame)
                     TJ.talentButton:UpdateParent(v.frame)
+                    local showActionButtons = v.frame ~= TJ.thanksMainFrame
+                    TJ.sendButton:SetShown(showActionButtons)
+                    TJ.autoButton:SetShown(showActionButtons)
+                    TJ.talentButton:SetShown(showActionButtons)
                     break
                 end
             end
@@ -416,6 +423,7 @@ TJ.Init(function()
         end
         local bt = TJ.Create_TabButton(TJ.equipMainFrameTabNum, L["团队"], TJ.equipMainFrame)
         local bt = TJ.Create_TabButton(TJ.optionMainFrameTabNum, L["设置"], TJ.optionMainFrame)
+        local bt = TJ.Create_TabButton(TJ.thanksMainFrameTabNum, L["感谢"], TJ.thanksMainFrame)
 
         After(0, function()
             TJ.ClickTabButton(TuanJian.lastFrameNum)
