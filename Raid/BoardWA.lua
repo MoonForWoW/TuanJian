@@ -45,6 +45,14 @@ TJ.Init2(function()
         myVerFrame:SetSize(1, 18)
         myVerFrame:Hide()
         TJ.BoardVerFrame.myVerFrame = myVerFrame
+
+        local warning = myVerFrame:CreateFontString(nil, "OVERLAY")
+        warning:SetFont(BIAOGE_TEXT_FONT, 14, "OUTLINE")
+        warning:SetTextColor(1, 0, 0)
+        warning:SetJustifyH("CENTER")
+        warning:SetText(L["未安装%s插件，减伤链无法生效"]:format(ns.BiaoGeName))
+        warning:Hide()
+        TJ.BoardVerFrame.missingAddonText = warning
     end
 
     -- 通报减伤链
@@ -413,6 +421,11 @@ TJ.Init2(function()
             TJ.BoardVerFrame.myVerFrame:SetParent(board)
             TJ.BoardVerFrame.myVerFrame:ClearAllPoints()
             TJ.BoardVerFrame.myVerFrame:SetPoint("BOTTOMLEFT", board, "BOTTOMLEFT", 10, 5)
+            local warning = TJ.BoardVerFrame.missingAddonText
+            warning:ClearAllPoints()
+            warning:SetPoint("BOTTOMLEFT", board, "BOTTOMLEFT", 10, 45)
+            warning:SetWidth(board:GetWidth() - 50)
+            warning:SetShown(not TJ.IsLoadBiaoGe())
         else
             TJ.BoardVerFrame.myVerFrame:Hide()
         end

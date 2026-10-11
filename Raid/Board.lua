@@ -171,6 +171,46 @@ function TJ.AddBoard(mainFrame, func)
     if TJ.boardInited and not mainFrame.isBoardLoad then init() end
 end
 
+local function CreateBoardTips(mainFrame)
+    local tbl = {
+        L["|cffffffff减伤链使用教程"],
+        " ",
+        L["|cffffffff设置减伤链：|r团长/助理可以手动设置减伤链，也可以点击[一键安排]按钮来自动设置减伤链。"],
+        " ",
+        L["|cffffffff使用效果"],
+        " ",
+        L["|cffffffff团员：|r已安装%s插件的团员如果该轮减伤是他自己，屏幕上方会显示一个倒计时进度条，方便他知道什么时候交减伤。剩余时间少于3秒时还会有\"叮叮叮\"音效提醒。"]:format(ns.BiaoGeName),
+        " ",
+        L["|cffffffff团长/助理：|r你能看到所有人每一轮的倒计时进度条。剩余时间少于5秒时会自动密语相应责任人，提醒他开减伤，即使对方没有安装%s插件。"]:format(ns.BiaoGeName),
+    }
+    local f = CreateFrame("Frame", nil, mainFrame)
+    f:EnableMouse(true)
+    f:SetPoint("TOPLEFT", 5, -1)
+    f:SetHitRectInsets(0, 0, 0, 0)
+    local t = f:CreateFontString()
+    t:SetPoint("CENTER")
+    t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")
+    t:SetJustifyH("LEFT")
+    t:SetText(L["教程"])
+    t:SetTextColor(0, 1, 0)
+    f:SetSize(t:GetStringWidth(), 20)
+    mainFrame.boardTipsText = f
+    f:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_NONE")
+        GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMLEFT")
+        GameTooltip:ClearLines()
+        for _, text in ipairs(tbl) do
+            GameTooltip:AddLine(text, 1, .82, 0, true)
+        end
+        GameTooltip:Show()
+        t:SetTextColor(1, 1, 1)
+    end)
+    f:SetScript("OnLeave", function(self)
+        GameTooltip:Hide()
+        t:SetTextColor(0, 1, 0)
+    end)
+end
+
 function TJ.CreateBoard(FB, bossIndex, spellInfo)
     TuanJian[FB][bossIndex].lastBoard = TuanJian[FB][bossIndex].lastBoard or 1
 
@@ -209,42 +249,7 @@ function TJ.CreateBoard(FB, bossIndex, spellInfo)
         t:SetText(L["减伤链"])
 
         -- 说明书
-        local tbl = {
-            L["|cffffffff减伤链使用教程"],
-            " ",
-            L["|cffffffff设置减伤链：|r团长/助理可以手动设置减伤链，也可以点击[一键安排]按钮来自动设置减伤链。"],
-            " ",
-            L["|cffffffff使用效果"],
-            " ",
-            L["|cffffffff团员：|r已安装%s插件的团员如果该轮减伤是他自己，屏幕上方会显示一个倒计时进度条，方便他知道什么时候交减伤。剩余时间少于3秒时还会有\"叮叮叮\"音效提醒。"]:format(ns.BiaoGeName),
-            " ",
-            L["|cffffffff团长/助理：|r你能看到所有人每一轮的倒计时进度条。剩余时间少于5秒时会自动密语相应责任人，提醒他开减伤，即使对方没有安装%s插件。"]:format(ns.BiaoGeName),
-        }
-        local f = CreateFrame("Frame", nil, mainFrame)
-        f:SetPoint("TOPLEFT", 5, -1)
-        f:SetHitRectInsets(0, 0, 0, 0)
-        local t = f:CreateFontString()
-        t:SetPoint("CENTER")
-        t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")
-        t:SetJustifyH("LEFT")
-        t:SetText(L["教程"])
-        t:SetTextColor(0, 1, 0)
-        f:SetSize(t:GetStringWidth(), 20)
-        mainFrame.boardTipsText = f
-        f:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_NONE")
-            GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMLEFT")
-            GameTooltip:ClearLines()
-            for _, text in ipairs(tbl) do
-                GameTooltip:AddLine(text, 1, .82, 0, true)
-            end
-            GameTooltip:Show()
-            t:SetTextColor(1, 1, 1)
-        end)
-        f:SetScript("OnLeave", function(self)
-            GameTooltip:Hide()
-            t:SetTextColor(0, 1, 0)
-        end)
+        CreateBoardTips(mainFrame)
 
         mainFrame:SetScript("OnShow", function(self)
             TJ.UpdateBoardVerFramePoint()
@@ -374,6 +379,42 @@ function TJ.CreateBoard(FB, bossIndex, spellInfo)
     end
 end
 
+-- 初始化时缓存链接和图标，预览、通报直接读取文本。
+local timelineSpellText, timelineItemText = {}, {}
+
+function TJ.CacheTimelineData(plans)
+    for _, plan in ipairs(plans) do
+        for _, node in ipairs(plan.timeline) do
+            for _, spellID in ipairs(node.spells or {}) do
+                if not timelineSpellText[spellID] then
+                    if C_Spell.DoesSpellExist(spellID) then
+                        timelineSpellText[spellID] = tostring(spellID)
+                        TJ.OnSpellLoad(spellID, function()
+                            local link = C_Spell.GetSpellLink(spellID)
+                            local icon = C_Spell.GetSpellTexture(spellID)
+                            timelineSpellText[spellID] = (icon and AddTexture(icon) or "") .. (link or tostring(spellID))
+                        end)
+                    else
+                        timelineSpellText[spellID] = format("|cffff6666%s (%d)|r", L["技能不可用"], spellID)
+                    end
+                end
+            end
+            for _, itemID in ipairs(node.items or {}) do
+                if not timelineItemText[itemID] then
+                    local icon = select(5, GetItemInfoInstant(itemID))
+                    timelineItemText[itemID] = (icon and AddTexture(icon) or "") .. format("%s (%d)", L["饰品"], itemID)
+                    Item:CreateFromItemID(itemID):ContinueOnItemLoad(function()
+                        local _, link, _, _, _, _, _, _, _, loadedIcon = GetItemInfo(itemID)
+                        if link then
+                            timelineItemText[itemID] = (loadedIcon and AddTexture(loadedIcon) or "") .. link
+                        end
+                    end)
+                end
+            end
+        end
+    end
+end
+
 -- 固定时间轴方案：仅创建方案按钮和角色输入框，运行时生成提醒数据。
 function TJ.CreateTimelineBoard(FB, bossIndex, plans)
     local parent = TJ.frame[FB][bossIndex]
@@ -399,6 +440,7 @@ function TJ.CreateTimelineBoard(FB, bossIndex, plans)
     board.child, board.tabButton, board.roleEdits = {}, {}, {}
     board.plans, board.planLabels = {}, {}
     parent.board = board
+    CreateBoardTips(board)
 
     local function Text(owner, text, x, y, size)
         local t = owner:CreateFontString(nil, "OVERLAY")
@@ -466,20 +508,11 @@ function TJ.CreateTimelineBoard(FB, bossIndex, plans)
     end
 
     local function SpellText(spellID)
-        if not C_Spell.DoesSpellExist(spellID) then
-            return format("|cffff6666%s (%d)|r", L["技能不可用"], spellID)
-        end
-        local link = C_Spell.GetSpellLink(spellID)
-        local icon = C_Spell.GetSpellTexture(spellID)
-        return (icon and AddTexture(icon) or "") .. (link or tostring(spellID))
+        return timelineSpellText[spellID] or tostring(spellID)
     end
 
     local function ItemText(itemID)
-        local _, link, _, _, _, _, _, _, _, icon = GetItemInfo(itemID)
-        if not icon then
-            icon = select(5, GetItemInfoInstant(itemID))
-        end
-        return (icon and AddTexture(icon) or "") .. (link or format("%s (%d)", L["饰品"], itemID))
+        return timelineItemText[itemID] or format("%s (%d)", L["饰品"], itemID)
     end
 
     local function TargetText(node, plan, plain)
@@ -573,6 +606,106 @@ function TJ.CreateTimelineBoard(FB, bossIndex, plans)
         end
     end
 
+    function board:ShowTimelineWindow()
+        local plan = self.plans[bossDB.timelinePlan]
+        if not plan then return end
+
+        local window = self.timelinePreviewWindow
+        if not window then
+            window = TJ.CreateMainFrame(nil, L["减伤时间轴"])
+            window:SetSize(260, 100)
+            window:SetScale(1)
+            window:SetResizable(true)
+            if window.SetResizeBounds then
+                window:SetResizeBounds(260, 100)
+            else
+                window:SetMinResize(260, 100)
+            end
+            window:EnableMouse(true)
+            window.titleText:SetTextColor(1, 1, 1)
+            window.titleText:SetWordWrap(false)
+            window.CloseButton:SetScript("OnClick", function() window:Hide() end)
+            window:ClearAllPoints()
+            window:SetPoint("TOPLEFT", UIParent, "TOPLEFT")
+            local function SavePosition()
+                window:StopMovingOrSizing()
+                local left, top = window:GetLeft(), window:GetTop()
+                if left and top then
+                    TuanJian.point.timelinePreviewWindow = { "TOPLEFT", "TOPLEFT", left, top - UIParent:GetHeight() }
+                end
+            end
+            window:HookScript("OnMouseUp", SavePosition)
+            window:HookScript("OnHide", SavePosition)
+
+            local container = CreateFrame("Frame", nil, window)
+            container:SetPoint("TOPLEFT", 10, -30)
+            container:SetPoint("BOTTOMRIGHT", -10, 10)
+            container:SetClipsChildren(true)
+            local text = CreateFrame("EditBox", nil, container)
+            text:SetPoint("TOPLEFT")
+            text:SetSize(232, 1)
+            text:SetMultiLine(true)
+            text:SetAutoFocus(false)
+            text:EnableMouse(false)
+            text:EnableKeyboard(false)
+            text:SetHyperlinksEnabled(false)
+            text:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
+            text:SetTextColor(1, .82, 0)
+            text:SetJustifyH("LEFT")
+            text:SetSpacing(1)
+            window.timelineText = text
+            local measure = window:CreateFontString(nil, "OVERLAY")
+            measure:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
+            measure:SetSpacing(1)
+            measure:SetWordWrap(true)
+            measure:Hide()
+            window.timelineMeasure = measure
+            local resize = CreateFrame("Button", nil, window)
+            resize:SetSize(20, 20)
+            resize:SetPoint("BOTTOMRIGHT", -2, 2)
+            resize:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+            resize:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+            resize:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+            resize:SetScript("OnMouseDown", function(_, button)
+                if button == "LeftButton" then window:StartSizing("BOTTOMRIGHT") end
+            end)
+            resize:SetScript("OnMouseUp", SavePosition)
+            resize:SetScript("OnHide", function() window:StopMovingOrSizing() end)
+            window.resizeHandle = resize
+            window:SetScript("OnSizeChanged", function(self, width, height)
+                local textWidth, titleWidth = math.max(1, width - 20), math.max(1, width - 20)
+                if self.timelineText:GetWidth() ~= textWidth then self.timelineText:SetWidth(textWidth) end
+                if self.titleText:GetWidth() ~= titleWidth then self.titleText:SetWidth(titleWidth) end
+            end)
+            self.timelinePreviewWindow = window
+        end
+
+        local lines = self:GetTimelineLines(plan.id)
+        local text = window.timelineMeasure
+        local width = 232
+        window.titleText:SetText(plan.name)
+        width = math.max(width, window.titleText:GetUnboundedStringWidth() + 40)
+        for _, line in ipairs(lines) do
+            text:SetText(line)
+            width = math.max(width, text:GetUnboundedStringWidth())
+        end
+        width = math.ceil(width) + 2
+        text:SetWidth(width)
+        text:SetText(table.concat(lines, "\n"))
+        window.timelineText:SetWidth(width)
+        window.timelineText:SetText(table.concat(lines, "\n"))
+        window.timelineText:SetCursorPosition(0)
+        window.timelineText:ClearFocus()
+        window:SetSize(width + 20, math.ceil(text:GetStringHeight()) + 40)
+        local savedPoint = TuanJian.point.timelinePreviewWindow
+        if savedPoint then
+            window:ClearAllPoints()
+            window:SetPoint(savedPoint[1], UIParent, savedPoint[2], savedPoint[3], savedPoint[4])
+        end
+        window:Show()
+        window:Raise()
+    end
+
     function board:GetAllQuestText(OnEnter)
         local result, players = { {} }, {}
         local plan = self.plans[bossDB.timelinePlan]
@@ -629,6 +762,7 @@ function TJ.CreateTimelineBoard(FB, bossIndex, plans)
         local child = {
             all = {},
             bossTime = {},
+            groups = {},
             bossSpellID = plan.bossSpellID,
             arrange = 1,
             startIndex = 1,
@@ -659,7 +793,18 @@ function TJ.CreateTimelineBoard(FB, bossIndex, plans)
                 child.bossTime[i] = node.time + timeOffset
             end
         end
-        child.maxIndex = #child.all
+        -- 以组内最早时间为基准，避免相邻任务不断串联成一个长组。
+        for i, task in ipairs(child.all) do
+            local time = child.bossTime[i]
+            local group = child.groups[#child.groups]
+            if not group or time - group.firstTime > 5 then
+                group = { firstTime = time, lastTime = time, tasks = {} }
+                child.groups[#child.groups + 1] = group
+            end
+            group.lastTime = time
+            group.tasks[#group.tasks + 1] = { index = i, time = time, task = task }
+        end
+        child.maxIndex = #child.groups
         self.child[plan.id] = child
     end
 
@@ -874,8 +1019,20 @@ function TJ.CreateTimelineBoard(FB, bossIndex, plans)
         preview:SetPoint("TOP", content, "TOP", 0, -52)
         preview:SetText(L["预览时间轴"])
         board.timelinePreviewButton = preview
+        preview:SetScript("OnClick", function(self)
+            HideTimelineTooltip(self)
+            local window = board.timelinePreviewWindow
+            if window and window:IsShown() then
+                window:Hide()
+            else
+                board:ShowTimelineWindow()
+            end
+        end)
         preview:SetScript("OnEnter", function(self)
             board:ShowTimelineTooltip(self)
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(AddTexture('LEFT')..L["打开独立时间轴窗口。"], 1, .82, 0, true)
+            GameTooltip:Show()
         end)
         preview:SetScript("OnLeave", HideTimelineTooltip)
         preview:SetScript("OnHide", HideTimelineTooltip)
@@ -1364,7 +1521,7 @@ function TJ.Board_ENCOUNTER_START(FB, bossIndex, isTest)
                     if info[bossSpellID].absoluteTime then
                         local state = info[bossSpellID]
                         local oldIndex = index
-                        while index <= maxIndex and updateFrame.t >= state.bossTime[index] do
+                        while index <= maxIndex and updateFrame.t >= state.groups[index].lastTime do
                             index = index + state.step
                         end
                         if index ~= oldIndex then
@@ -1373,16 +1530,20 @@ function TJ.Board_ENCOUNTER_START(FB, bossIndex, isTest)
                             end
                             state.index = index
                             state.canUpdate = true
-                            -- 留出自动隐藏的交接时间，下一条仍按原时间点结束。
+                            -- 整组结束后再交接，组内任务各自按施放时间自动隐藏。
                             state.nextShowTime = updateFrame.t + 0.5
                         end
                         if index > maxIndex then
                             updateFrame:SetScript("OnUpdate", nil)
                         elseif state.canUpdate and updateFrame.t >= (state.nextShowTime or 0)
-                            and state.bossTime[index] - updateFrame.t <= TuanJian.options.boardTipsTime then
+                            and state.groups[index].firstTime - updateFrame.t <= TuanJian.options.boardTipsTime then
                             state.canUpdate = nil
-                            SetBar(state.child.all[index], arrange, bossSpellID, index,
-                                state.bossTime[index] - updateFrame.t, state.autoHide, state.now, state.target)
+                            for _, entry in ipairs(state.groups[index].tasks) do
+                                if entry.time > updateFrame.t then
+                                    SetBar(entry.task, arrange, bossSpellID, entry.index,
+                                        entry.time - updateFrame.t, state.autoHide, state.now, state.target)
+                                end
+                            end
                         end
                         return
                     end

@@ -18,10 +18,11 @@ function TJ.InitThanksPage()
 
     local supporters = {
         "寒风",
+        "突然掉线",
         "爱发电用户_eaef8",
-        "爱发电用户_12e5b",
         "心恋宝贝",
         "lumos",
+        "爱发电用户_8b768",
         "爱发电用户_d18bc",
     }
     for i, name in ipairs(supporters) do

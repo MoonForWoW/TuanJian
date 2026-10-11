@@ -4,7 +4,7 @@
 ## IconTexture: Interface\AddOns\TuanJian\Media\icon\icon.png
 ## Author: 苍穹之霜
 ## SavedVariables: TuanJian
-## Version: 2.2.3
+## Version: 2.2.4
 
 Templates.xml
 Libs\embeds.xml
