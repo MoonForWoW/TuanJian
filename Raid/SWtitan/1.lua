@@ -38,8 +38,8 @@ TJ.Load[FB .. bossIndex] = function()
     TJ.autoRaidTargetInfo[instanceID][25588] = { -- 欺诈者之手
         [8] = true,
         [7] = true,
-        [6] = true,
         [5] = true,
+        [4] = true,
         np = true,
     }
 

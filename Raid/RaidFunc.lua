@@ -35,8 +35,8 @@ function TJ.GetToolCombatInfo(info)
 end
 
 function TJ.CreateTitle(FB, bossIndex, AutoFuc, icon, name,
-                          autoText, classTbl, updateFuc, info, tipsText,
-                          showTitleName, arrange, cantSend)
+                        autoText, classTbl, updateFuc, info, tipsText,
+                        showTitleName, arrange, cantSend)
     local parent = TJ.frame[FB][bossIndex]
     parent.all = parent.all or {}
     TuanJian[FB][bossIndex][#parent.all + 1] = TuanJian[FB][bossIndex][#parent.all + 1] or {}
@@ -132,6 +132,15 @@ function TJ.CreateTitle(FB, bossIndex, AutoFuc, icon, name,
         end
     end)
     f:SetScript("OnMouseDown", function(self)
+        if info and info.castRecords then
+            local castFrame = TJ.castRecordsFrame
+            if castFrame and castFrame:IsShown() then
+                castFrame:Hide()
+            else
+                self:SetCombatFrame(true)
+            end
+            return
+        end
         local f = TJ.combatFrameMany[1]
         if f and f:IsVisible() then
             if f:GetParent() == self then
@@ -152,6 +161,11 @@ function TJ.CreateTitle(FB, bossIndex, AutoFuc, icon, name,
     end)
 
     function f:SetCombatFrame(click)
+        -- 施法记录包含输入框和筛选，点击时再打开，避免悬停抢焦点。
+        if info and info.castRecords then
+            if click then TJ.CreateCastRecordsFrame(self, nil, true) end
+            return
+        end
         local processorKey = GetTime()
         TJ.ReSetCombatFrame()
         TJ.combatFrameProcessors[processorKey] = true
@@ -786,7 +800,7 @@ function TJ.CreateSPTitle(FB, bossIndex, destNPCID, func)
                     },
                     destNpcType = { "Player" },
                 },
-                title = { icon = 34477, name = L["误导 / %s嫁祸"]:format( TJ.AddIconBySpellID(57933)) },
+                title = { icon = 34477, name = L["误导 / %s嫁祸"]:format(TJ.AddIconBySpellID(57933)) },
                 notShowDead = true,
             },
             {
@@ -864,7 +878,7 @@ function TJ.CreateSPTitle(FB, bossIndex, destNPCID, func)
                 title = { icon = TJ.SSpowerSpell, name = L["恶魔契约"] },
                 canSend = false,
                 notShowDead = true,
-                SSpowerSpell=true,
+                SSpowerSpell = true,
             })
         end
     elseif TJ.IsMOP then
@@ -924,7 +938,7 @@ function TJ.CreateSPTitle(FB, bossIndex, destNPCID, func)
             },
         }
     end
-    local f = TJ.CreateTitle(FB, bossIndex, nil, TJ.IsMOP and "ability_shaman_tranquilmindtotem" or "ability_warrior_riposte", L["工具人"],
+    local f = TJ.CreateTitle(FB, bossIndex, nil, TJ.IsMOP and "ability_shaman_tranquilmindtotem" or "ability_warrior_riposte", L["工具"],
         nil, nil, nil, info)
     f.isToolCombat = true
     f.toolCombatInfo = info
@@ -1077,9 +1091,17 @@ function TJ.CreateSPTitle(FB, bossIndex, destNPCID, func)
     local f = TJ.CreateTitle(FB, bossIndex, nil, "ability_rogue_feigndeath", L["死亡"],
         nil, nil, nil, info)
     TJ.AddSPTitle(FB, bossIndex, f)
+
+    local f = TJ.CreateTitle(FB, bossIndex, nil, "spell_holy_renew", L["施法"],
+        nil, nil, nil, { castRecords = true })
+    TJ.AddSPTitle(FB, bossIndex, f)
 end
 
-local maxNum = TJ.IsTBC and 4 or 5
+local maxNum = TJ.IsTBC and 5 or 6
+function TJ.GetSPTitleRowCount(count)
+    return 1 + math.ceil(math.max(0, count - maxNum) / 4)
+end
+
 function TJ.AddSPTitle(FB, bossIndex, f)
     if not TJ.spChild[FB .. bossIndex] then
         TJ.spChild[FB .. bossIndex] = {}
@@ -1088,7 +1110,7 @@ function TJ.AddSPTitle(FB, bossIndex, f)
     if next(TJ.spChild[FB .. bossIndex]) then
         local index = #TJ.spChild[FB .. bossIndex] + 1
         if index <= maxNum then
-            f:SetPoint("LEFT", TJ.spChild[FB .. bossIndex][index - 1], "RIGHT", 0, 0)
+            f:SetPoint("LEFT", TJ.spChild[FB .. bossIndex][index - 1], "RIGHT", maxNum == 6 and -5 or 0, 0)
         elseif index == maxNum + 1 then
             f:SetPoint("TOPLEFT", TJ.spChild[FB .. bossIndex][1], "BOTTOMLEFT", 0, -10)
         elseif (index - (maxNum + 1)) % 4 == 0 then
@@ -1150,7 +1172,8 @@ function TJ.SetAutoChoose()
         board.AutoFuc()
     end
 end
---[[ 
+
+--[[
 /dump TJ.frame['TOC'][6].board.AutoFuc
 ]]
 function TJ.GetAllQuestText(OnEnter)

@@ -436,11 +436,10 @@ TJ.Init(function()
     -- 副本选择
     do
         local dropDown = LibBG:Create_UIDropDownMenu(nil, TJ.raidMainFrame)
-        dropDown:SetPoint("TOPLEFT", TJ.MainFrame, "TOPLEFT", -5, -30)
-        LibBG:UIDropDownMenu_SetWidth(dropDown, 110)
+        dropDown:SetPoint("TOPLEFT", TJ.MainFrame, "TOPLEFT", 10, -30)
+        dropDown:SetWidth(130)
         LibBG:UIDropDownMenu_SetAnchor(dropDown, 0, 0, "TOP", dropDown, "BOTTOM")
         dropDown.Text:SetJustifyH("LEFT")
-        TJ.dropDownToggle(dropDown)
         TJ.FBDropDown = dropDown
         for _, v in pairs(TJ.FBtbl) do
             if TuanJian.FB == v.FB then
@@ -501,13 +500,8 @@ TJ.Init(function()
             local bossIndex = TuanJian.bossIndex
             self:ClearAllPoints()
             local count = #TJ.spChild[FB .. bossIndex]
-            local cow
-            if count <= 5 then
-                cow = 1
-            else
-                cow = floor((count - 6) / 4) + 2
-            end
-            self:SetPoint("TOPLEFT", TJ.raidChild, "BOTTOMLEFT", 10, 10 + cow * 30)
+            local rows = TJ.GetSPTitleRowCount(count)
+            self:SetPoint("TOPLEFT", TJ.raidChild, "BOTTOMLEFT", 10, 10 + rows * 30)
             self:SetPoint("BOTTOMRIGHT", TJ.raidChild, "BOTTOMRIGHT", -10, 10)
         end
 
@@ -583,12 +577,11 @@ TJ.Init(function()
     -- 选择日志
     do
         local dropDown = LibBG:Create_UIDropDownMenu(nil, TJ.raidMainFrame)
-        dropDown:SetPoint("BOTTOMLEFT", TJ.raidChild, "TOPLEFT", -15, -5)
-        LibBG:UIDropDownMenu_SetWidth(dropDown, 180)
+        dropDown:SetPoint("BOTTOMLEFT", TJ.raidChild, "TOPLEFT", 0, 2)
+        dropDown:SetWidth(200)
         LibBG:UIDropDownMenu_SetAnchor(dropDown, 0, 0, "TOP", dropDown, "BOTTOM")
         dropDown.Text:SetJustifyH("LEFT")
         dropDown:SetScale(.85)
-        TJ.dropDownToggle(dropDown)
         TJ.logDropDown = dropDown
 
         function dropDown:FormatText(v, i)
@@ -725,7 +718,7 @@ TJ.Init(function()
             if not TJ.tabFrame[FB] then
                 TJ.frame[FB] = {}
                 local f = CreateFrame("Frame", nil, TJ.raidMainFrame, "BackdropTemplate")
-                f:SetPoint("LEFT", TJ.FBDropDown, "RIGHT", 0, 0)
+                f:SetPoint("LEFT", TJ.FBDropDown, "RIGHT", 5, 0)
                 f:SetSize(1, 30)
                 f:Hide()
                 TJ.tabFrame[FB] = f
@@ -746,7 +739,7 @@ TJ.Init(function()
                         bt.bossIndex = bossIndex
                         bt.bossName = v.name
                         if not last then
-                            bt:SetPoint("LEFT", -5, 2)
+                            bt:SetPoint("LEFT", 0, 0)
                         else
                             bt:SetPoint("LEFT", TJ.tabFrame[FB][last], "RIGHT", 0, 0)
                         end
@@ -1847,7 +1840,7 @@ TJ.Init(function()
         local icon = f:CreateTexture()
         icon:SetSize(20, 20)
         icon:SetPoint("LEFT")
-        icon:SetTexture(ns.Interface .. "Media\\icon\\icon.tga")
+        icon:SetTexture(ns.Interface .. "Media\\icon\\icon.png")
 
         local t = f:CreateFontString()
         t:SetFont(BIAOGE_TEXT_FONT, 15, "OUTLINE")

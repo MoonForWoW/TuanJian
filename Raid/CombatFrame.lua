@@ -213,6 +213,7 @@ local function ReleaseCombatPanels()
     for _, f in ipairs(combatPanels) do
         if f._combatInUse then
             f._combatInUse = false
+            f._combatPlayerNames = nil
             if f._combatCancelTasks then
                 for _, cancel in ipairs(f._combatCancelTasks) do cancel() end
                 f._combatCancelTasks = nil
@@ -314,6 +315,7 @@ end
 
 local function CreateBar(f, v, playerText)
     local combatLog = TJ.GetCombatLog()
+    local deathEvents = v.diedGUID and TJ.GetCombatLogEvent()
     local duration = combatLog.duration
     local guidTbl = combatLog.guid
     local index = playerText.index
@@ -401,6 +403,10 @@ local function CreateBar(f, v, playerText)
                 end
             end
         end
+        if v.diedGUID then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(L["%s查看死者施法　%s查看治疗施法"]:format(AddTexture('LEFT'), AddTexture('RIGHT')), 1, .82, 0)
+        end
         GameTooltip:Show()
 
         if not self.ds then
@@ -422,6 +428,16 @@ local function CreateBar(f, v, playerText)
             self.ds:Hide()
         end
     end)
+    if v.diedGUID then
+        bar:EnableMouse(true)
+        bar:SetScript("OnMouseDown", function() end)
+        bar:SetScript("OnMouseUp", function(_, button)
+            if button ~= "LeftButton" and button ~= "RightButton" then return end
+            for _, panel in ipairs(TJ.combatFrameMany) do TJ.SetCombatFrameIsClick(panel) end
+            GameTooltip:Hide()
+            TJ.OpenCastRecordsForDeath(f, combatLog, deathEvents, v.diedGUID, v.endTime, button == "RightButton")
+        end)
+    end
     if type(v.spellID) == 'number' and v.spellID > 0 then
         if v.spellID == 1 then
             v.spellName = L["平砍"]
@@ -522,8 +538,8 @@ local function CreateMoneyFrame(parent, button)
         local edit = CreateFrame("EditBox", nil, f, TJ.editTemplate)
         edit:SetSize(f:GetWidth() - t:GetWidth() - 30, 20)
         edit:SetPoint("LEFT", t, "RIGHT", 5, 0)
-        edit:SetText(parent:GetParent().titleName ..
-            (parent.info and parent.info.dead and format(L["(%s)"], TJ.bossNameText:GetText()) or ""))
+        edit:SetText((TJ.ClearCode(parent:GetParent().titleName ..
+            (parent.info and parent.info.dead and format(L["(%s)"], TJ.bossNameText:GetText()) or ""), true)))
         edit:SetAutoFocus(false)
         f.nameEdit = edit
         edit:HookScript("OnEditFocusGained", function(self)
@@ -662,7 +678,7 @@ local function CreatePlayerText(index, name, class, num)
     playerText:SetPoint("TOPRIGHT", f, "TOPLEFT", f.leftWidth, f.topHeight - (index - 1) * btHeight)
     playerText:SetFrameLevel(TJ.combatFrame:GetFrameLevel() + 10)
     playerText.name = name
-    playerText.name2 = TJ.GetIconFormName(name)
+    playerText.name2 = f._combatPlayerNames and f._combatPlayerNames[name] or TJ.GetIconFormName(name)
     playerText.color = { r, g, b }
     local t = AcquireCombatRegion(playerText, "FontString")
     t:SetFont(BIAOGE_TEXT_FONT, 13, "OUTLINE")
@@ -1477,16 +1493,15 @@ local function RefreshDps()
 end
 local function UpdateDropDownPoint()
     TJ.combatFrameDropDown:SetParent(TJ.combatFrame)
-    TJ.combatFrameDropDown:SetPoint("BOTTOM", TJ.combatFrame, "BOTTOM", 0, 0)
+    TJ.combatFrameDropDown:SetPoint("BOTTOM", TJ.combatFrame, "BOTTOM", 0, 7)
     TJ.combatFrameDropDown:Show()
 end
 local function CreateDropDown(dropDownInfo, isRefresh)
     if not TJ.combatFrameDropDown then
         TJ.combatFrameDropDownInfo = {}
         local dropDown = LibBG:Create_UIDropDownMenu(nil, TJ.combatFrame)
-        LibBG:UIDropDownMenu_SetWidth(dropDown, 150)
+        dropDown:SetWidth(150)
         LibBG:UIDropDownMenu_SetAnchor(dropDown, 0, 0, "BOTTOM", dropDown, "TOP")
-        TJ.dropDownToggle(dropDown)
         TJ.combatFrameDropDown = dropDown
         LibBG:UIDropDownMenu_Initialize(dropDown, function(self, level)
             for _, v in ipairs(TJ.combatFrameDropDownInfo) do
@@ -1632,7 +1647,7 @@ local function CreateToolCombatSettingButton(f, bt)
                 end
             end
 
-            LibBG:UIDropDownMenu_AddSeparator()
+            LibBG:UIDropDownMenu_AddButton({ separator = true, notCheckable = true })
 
             local info = LibBG:UIDropDownMenu_CreateInfo()
             info.text = L["全部勾选"]
@@ -1640,7 +1655,7 @@ local function CreateToolCombatSettingButton(f, bt)
             info.keepShownOnClick = true
             info.func = function()
                 wipe(filter)
-                LibBG:UIDropDownMenu_Refresh(dropDown, nil, 1)
+                LibBG:Refresh()
             end
             LibBG:UIDropDownMenu_AddButton(info)
 
@@ -1662,8 +1677,9 @@ local function CreateToolCombatSettingButton(f, bt)
 
     button:SetScript("OnClick", function(self)
         TJ.toolCombatFrameDropDownOwner = self.ownerTitle
-        TJ.toolCombatFrameDropDown:SetParent(f)
-        LibBG:ToggleDropDownMenu(1, nil, TJ.toolCombatFrameDropDown, self, 0, 0)
+        self.items = TJ.toolCombatFrameDropDown.items
+        LibBG:UIDropDownMenu_SetAnchor(self, 0, 0, "TOPLEFT", self, "BOTTOMLEFT")
+        LibBG:ToggleDropDownMenu(1, nil, self)
         TJ.PlaySound(1)
     end)
 
@@ -1902,6 +1918,10 @@ local batch2 = 1000
 
 function TJ.CreateCombatFrame(...)
     local bt, processorKey, info, updateTitleColor, manyIndex, allInfo, click, isRefresh = ...
+    if info and info.castRecords then
+        TJ.CreateCastRecordsFrame(bt, updateTitleColor, click, processorKey)
+        return
+    end
     local function GoNextUpdateTitleColor()
         updateTitleColor.callback()
     end
@@ -1951,6 +1971,14 @@ function TJ.CreateCombatFrame(...)
 
     local f = not updateTitleColor and AcquireCombatPanel(parent) or {}
     if not updateTitleColor then
+        -- 使用该场战斗的专精快照，避免离队或切换专精后影响历史分析。
+        f._combatPlayerNames = {}
+        for _, member in ipairs(combatLog.raidMember or {}) do
+            local icons = TJ.talentIcon[member.class]
+            local icon = icons and icons[member.talent]
+            if not icon then icon = member.combatRole or member.role end
+            f._combatPlayerNames[member.name] = (icon and AddTexture(icon) or "") .. member.name
+        end
         f:SetBackdrop({
             bgFile = "Interface/ChatFrame/ChatFrameBackground",
             edgeFile = "Interface/ChatFrame/ChatFrameBackground",

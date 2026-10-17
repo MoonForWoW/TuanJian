@@ -19,9 +19,13 @@ function TJ.InitThanksPage()
     local supporters = {
         "寒风",
         "突然掉线",
-        "爱发电用户_eaef8",
+        "飘柔",
         "心恋宝贝",
+        "仙慕",
         "lumos",
+        "爱发电用户_6eb19",
+        "时光II取胜团东哥",
+        "正能量的面包鸡",
         "爱发电用户_8b768",
         "爱发电用户_d18bc",
     }

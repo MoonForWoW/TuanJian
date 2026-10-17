@@ -132,14 +132,14 @@ TJ.Load[FB .. bossIndex] = function()
         TJ.autoRaidTargetInfo[instanceID][34607] = {
             [8] = true,
             [7] = true,
-            [6] = true,
             [5] = true,
+            [4] = true,
             np = true,
         }
 
         TJ.options[name .. "reset"] = 1
         TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
-        local icon = TJ.SetRaidTargetingTex(8, 7, 6, 5)
+        local icon = TJ.SetRaidTargetingTex(8, 7, 5, 4)
         local ontext = {
         }
         local f = ns.O.CreateCheckButton(name, format(L["战斗中把中虫标记为%s（需要团长/助理）"], icon),

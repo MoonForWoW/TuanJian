@@ -24,7 +24,7 @@ if not GetItemSetInfo then
     GetItemSetInfo = C_Item.GetItemSetInfo
 end
 
-local LibBG = LibStub:GetLibrary("BiaoGe-LibUIDropDownMenu-4.0") -- 调用库菜单UI
+local LibBG = ns.Menu -- 调用库菜单UI
 ns.LibBG = LibBG
 
 C_ChatInfo.RegisterAddonMessagePrefix("TuanJian")

@@ -39,7 +39,9 @@ TJ.Load[FB .. bossIndex] = function()
             { point = "TOPLEFT", xy = { 439, -220 } },
             { point = "TOPLEFT", xy = { 439, -299 } },
             { point = "TOPLEFT", xy = { 398, -370 } },
+            { point = "TOPLEFT", xy = { 621, -18 } },
             { point = "TOPLEFT", xy = { 295, -415 } },
+            { point = "TOPLEFT", xy = { 620, -66 } },
             { point = "TOPLEFT", xy = { 185, -368 } },
             { point = "TOPLEFT", xy = { 154, -291 } },
             { point = "TOPLEFT", xy = { 163, -205 } },
@@ -49,19 +51,27 @@ TJ.Load[FB .. bossIndex] = function()
             [100] = { xy = { 296, -271 }, isNPC = "b" .. bossIndex, size = 250, },
         }
 
-        --[[
-
-
-]]
+        -- 站位编号调整为钟点方位，清除旧布局和人员分配，仅执行一次。
+        TJ.Once("ULDtitan13map", 261016, function()
+            wipe(TuanJian[FB][bossIndex].map)
+        end)
 
         local function AutoFuc()
+            local function SetPlayer(v)
+                for i, icon in ipairs(mainFrame.map.icons) do
+                    if i ~= 5 and i ~= 7 and icon:NoPlayer() then
+                        icon:SetPlayer(v)
+                        return
+                    end
+                end
+            end
             local healers = TJ.SortRaidRosterInfo(nil, "dps1", true)
             for _, v in ipairs(healers) do
-                TJ.SetMapIconPlayer(v)
+                SetPlayer(v)
             end
             local rangedDps = TJ.SortRaidRosterInfo(nil, "dps2", true)
             for _, v in ipairs(rangedDps) do
-                TJ.SetMapIconPlayer(v)
+                SetPlayer(v)
             end
         end
         local text = L["优先安排近战DPS，其次远程DPS。"]
@@ -74,6 +84,8 @@ TJ.Load[FB .. bossIndex] = function()
 
     -- 自动标记
     local name = "rt" .. FB .. bossIndex
+    local deathCoilName = name .. "DeathCoil"
+    local deathCoilGUID
     do
         mainFrame.autoRT = name
         local instanceID = TJ.FBinfo[FB].ID
@@ -81,14 +93,14 @@ TJ.Load[FB .. bossIndex] = function()
         TJ.autoRaidTargetInfo[instanceID][33136] = {
             [8] = true,
             [7] = true,
-            [6] = true,
             [5] = true,
+            [4] = true,
             np = true,
         }
 
         TJ.options[name .. "reset"] = 1
         TuanJian.options[name] = TuanJian.options[name] or TJ.options[name .. "reset"]
-        local icon = TJ.SetRaidTargetingTex(8, 7, 6, 5)
+        local icon = TJ.SetRaidTargetingTex(8, 7, 5, 4)
         local ontext = {
         }
         local f = ns.O.CreateCheckButton(name, format(L["战斗中把P1小怪标记为%s（需要团长/助理）"], icon),
@@ -96,6 +108,15 @@ TJ.Load[FB .. bossIndex] = function()
         f:ClearAllPoints()
         f:SetPoint("BOTTOMLEFT", TJ.spChild.title, "TOPRIGHT", 0, 15)
         f:SetHitRectInsets(0, 0, 0, 0)
+
+        TJ.options[deathCoilName .. "reset"] = 1
+        TuanJian.options[deathCoilName] = TuanJian.options[deathCoilName] or TJ.options[deathCoilName .. "reset"]
+        local deathCoil = ns.O.CreateCheckButton(deathCoilName,
+            format(L["战斗中把P2死缠目标标记为%s（需要团长/助理）"], TJ.SetRaidTargetingTex(8)),
+            mainFrame, 40, -150, {})
+        deathCoil:ClearAllPoints()
+        deathCoil:SetPoint("BOTTOMLEFT", f, "TOPLEFT", 0, 0)
+        deathCoil:SetHitRectInsets(0, 0, 0, 0)
     end
 
     TJ.CreateSPTitle(FB, bossIndex, nil, nil)
@@ -207,6 +228,7 @@ TJ.Load[FB .. bossIndex] = function()
         end
         mainFrame.ENCOUNTER_START = function()
             phase = 1
+            deathCoilGUID = nil
         end
         mainFrame.SPELL_AURA_APPLIED = function(...)
             local destGUID = select(8, ...)
@@ -214,12 +236,27 @@ TJ.Load[FB .. bossIndex] = function()
             if spellID == 63894 and TJ.GetNPCID(destGUID) == 33288 then
                 RecordPhase(2)
             end
+            if (spellID == 63830 or spellID == 63881)
+                and TuanJian.options[deathCoilName] == 1 and TJ.IsLeader() then
+                local playerInfo = TJ.raidRosterGUID[destGUID]
+                if playerInfo then
+                    SetRaidTarget(playerInfo.name, 8)
+                    deathCoilGUID = destGUID
+                end
+            end
         end
         mainFrame.SPELL_AURA_REMOVED = function(...)
             local destGUID = select(8, ...)
             local spellID = select(12, ...)
             if spellID == 63894 and TJ.GetNPCID(destGUID) == 33288 then
                 RecordPhase(3)
+            end
+            if (spellID == 63830 or spellID == 63881) and destGUID == deathCoilGUID then
+                local playerInfo = TJ.raidRosterGUID[destGUID]
+                if playerInfo and TJ.IsLeader() and GetRaidTargetIndex(playerInfo.name) == 8 then
+                    SetRaidTarget(playerInfo.name, 0)
+                end
+                deathCoilGUID = nil
             end
         end
         -- DBM收到Phase3同步后也会触发阶段回调，补上大脑房间收不到的外场事件。

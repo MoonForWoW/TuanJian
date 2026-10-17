@@ -956,19 +956,39 @@ function TJ.CreateTimelineBoard(FB, bossIndex, plans)
         planTitle:SetJustifyH("RIGHT")
 
         local dropDown = LibBG:Create_UIDropDownMenu(nil, content)
-        dropDown:SetPoint("LEFT", planTitle, "RIGHT", -10, -4)
-        LibBG:UIDropDownMenu_SetWidth(dropDown, 200)
+        dropDown:SetPoint("LEFT", planTitle, "RIGHT", 5, 0)
+        dropDown:SetWidth(220)
         LibBG:UIDropDownMenu_SetAnchor(dropDown, 0, 0, "TOP", dropDown, "BOTTOM")
-        TJ.dropDownToggle(dropDown)
         board.planDropDown = dropDown
         board.planLabels[0] = L["不使用"]
         for _, plan in ipairs(plans) do
             board.planLabels[plan.id] = plan.name
         end
 
-        local function AddPlanOption(id, name)
+        local function MatchesRaid(plan, candidates)
+            local used = {}
+            for _, role in ipairs(plan.roles) do
+                local key = role.class .. ":" .. role.role
+                if not candidates[key] then
+                    candidates[key] = TJ.SortRaidRosterInfo({ role.class }, role.role)
+                end
+                local matched
+                for _, playerInfo in ipairs(candidates[key]) do
+                    local talent = playerInfo.talent or TuanJian.talentInfo[playerInfo.name]
+                    if not used[playerInfo.name] and (not role.talent or talent == role.talent) then
+                        used[playerInfo.name] = true
+                        matched = true
+                        break
+                    end
+                end
+                if not matched then return false end
+            end
+            return true
+        end
+
+        local function AddPlanOption(id, name, recommended)
             local info = LibBG:UIDropDownMenu_CreateInfo()
-            info.text = name
+            info.text = recommended and (name .. "|cff00ff00" .. L["（推荐）"] .. "|r") or name
             info.checked = bossDB.timelinePlan == id
             info.func = function()
                 if id == 0 or not InCombatLockdown() then
@@ -989,28 +1009,18 @@ function TJ.CreateTimelineBoard(FB, bossIndex, plans)
                 board:Refresh()
             end
 
-            local button = LibBG:UIDropDownMenu_AddButton(info)
-            button.tjTimelinePreview = { board = board, id = id, name = name, func = info.func }
-            if not button.tjTimelinePreviewHooked then
-                button.tjTimelinePreviewHooked = true
-                button:HookScript("OnEnter", function(self)
-                    local preview = self.tjTimelinePreview
-                    -- 菜单按钮会被其他下拉菜单复用，仅处理当前方案选项。
-                    if not preview or self.func ~= preview.func then
-                        return
-                    end
-                    preview.board:ShowTimelineTooltip(self, preview.id, preview.name)
-                end)
-
-                button:HookScript("OnLeave", HideTimelineTooltip)
-                button:HookScript("OnHide", HideTimelineTooltip)
+            info.onEnter = function(row)
+                board:ShowTimelineTooltip(row, id, name)
             end
+            info.onLeave = HideTimelineTooltip
+            LibBG:UIDropDownMenu_AddButton(info)
         end
 
         LibBG:UIDropDownMenu_Initialize(dropDown, function()
+            local candidates = {}
             AddPlanOption(0, L["不使用"])
             for _, plan in ipairs(plans) do
-                AddPlanOption(plan.id, plan.name)
+                AddPlanOption(plan.id, plan.name, MatchesRaid(plan, candidates))
             end
         end)
 

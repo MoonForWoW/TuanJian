@@ -883,21 +883,20 @@ function TJ.CombatFrameAddText(self)
     if self.tooltip:match("aura") then
         local spellName = self.v.spellName
         local icon = self.v.icon
-        local countText = ""
-        if self.v.stackCount then
-            countText = format("(%s)", self.v.stackCount)
-        end
         local text = ""
         if self.v.startTime and self.v.endTime then
             text = format("|cff808080（%s - %s）|r", TJ.SecondsToTime(self.v.startTime),
                 TJ.SecondsToTime(self.v.endTime))
         end
         GameTooltip:AddLine(L["光环"] .. text, 1, 1, 1)
-        GameTooltip:AddDoubleLine(L["光环"], AddTexture(icon) .. spellName .. countText)
+        GameTooltip:AddDoubleLine(L["光环"], AddTexture(icon) .. spellName)
         GameTooltip:AddDoubleLine(L["施法者"], sourceRT .. TJ.GetIconFormName(sourceName), 1, .82, 0, sr, sg, sb)
         GameTooltip:AddDoubleLine(L["施法目标"], destRT .. TJ.GetIconFormName(destName), 1, .82, 0, dr, dg, db)
         GameTooltip:AddDoubleLine(L["持续时间"], TJ.SecondsToTime(Round(self.v.endTime, 1) - Round(self.v.startTime, 1)),
             1, .82, 0, 1, .82, 0)
+        if self.v.stackCount then
+            GameTooltip:AddDoubleLine(L["层数"], tostring(self.v.stackCount), 1, .82, 0, 1, .82, 0)
+        end
     end
     if self.tooltip:match("dispel") then
         local text = format("|cff808080（%s）|r", TJ.SecondsToTime(self.v.endTime))
@@ -1258,7 +1257,7 @@ function TJ.CombatFrameAddText(self)
             end
         else
             local text = format("|cff808080（%s）|r", TJ.SecondsToTime(self.v.endTime))
-            GameTooltip:AddLine(L["施法"] .. text, 1, 1, 1)
+            GameTooltip:AddLine(L["施法"] .. text, 0, .75, 1)
             GameTooltip:AddDoubleLine(L["技能"], AddTexture(self.v.icon) .. self.v.spellName)
             GameTooltip:AddDoubleLine(L["施法者"], sourceRT .. TJ.GetIconFormName(sourceName), 1, .82, 0, sr, sg, sb)
             GameTooltip:AddDoubleLine(L["施法目标"], destRT .. TJ.GetIconFormName(destName), 1, .82, 0, dr, dg, db)

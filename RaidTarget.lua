@@ -204,16 +204,15 @@ TJ.Init(function()
 
     -- 一键安排标记顺序
     do
-        local dropDown = LibBG:Create_UIDropDownMenu(nil, TJ.MainFrame)
         local option = TJ.CreateButton(mainFrame)
         option:SetPoint("LEFT", TJ.autoButton, "RIGHT", 0, 0)
         option:SetSize(23, TJ.autoButton:GetHeight())
         option:SetText("▼")
-        LibBG:UIDropDownMenu_SetAnchor(dropDown, 0, 0, "BOTTOMLEFT", option, "TOPLEFT")
+        LibBG:UIDropDownMenu_SetAnchor(option, 0, 0, "BOTTOMLEFT", option, "TOPLEFT")
         option:SetScript("OnClick", function(self)
             TJ.PlaySound(1)
-            if L_DropDownList1:IsVisible() and L_DropDownList1.dropdown == dropDown then
-                L_DropDownList1:Hide()
+            if LibBG:IsOpen(self) then
+                LibBG:Close()
             else
                 local menu = {
                     {
@@ -240,7 +239,7 @@ TJ.Init(function()
                     end,
                 })
 
-                LibBG:EasyMenu(menu, dropDown, self, 0, 0, "MENU", 5)
+                LibBG:EasyMenu(menu, self, self, 0, 0, "MENU", 5)
             end
         end)
     end
@@ -351,16 +350,16 @@ do
         [8] = true, -- 骷髅
     }
     TJ.autoRaidTargetIcon2 = {
+        [4] = true, -- 三角
         [5] = true, -- 月亮
-        [6] = true, -- 方块
         [7] = true, -- 叉叉
         [8] = true, -- 骷髅
     }
     TJ.autoRaidTargetIcon3 = {
         [1] = true, -- 星星
-        [2] = true, -- 大饼
         [3] = true, -- 紫菱
         [4] = true, -- 三角
+        [5] = true, -- 月亮
     }
 
     TJ.autoRaidTargetInfo = {}

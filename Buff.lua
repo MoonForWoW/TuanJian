@@ -2,7 +2,7 @@ local AddonName, ns = ...
 
 if not (TJ.IsWLK or TJ.IsMOP) then return end
 
-local LibBG = ns.LibBG
+local Menu = ns.Menu
 local L = ns.L
 
 local Size = ns.Size
@@ -862,8 +862,8 @@ TJ.Init(function()
                 end,
                 isNotRadio = true,
                 keepShownOnClick = true,
-                func = function(button, _, _, checked)
-                    if not checked then
+                func = function()
+                    if IsMonitorRowEnabled(filterRow) then
                         local enabledCount = 0
                         for _, otherRow in ipairs(rows) do
                             if IsMonitorRowEnabled(otherRow) then
@@ -872,9 +872,6 @@ TJ.Init(function()
                         end
                         if enabledCount <= 4 then
                             UIErrorsFrame:AddMessage(L["至少需要保留4种BUFF监控"], 1, 0, 0)
-                            button.checked = true
-                            _G[button:GetName() .. "Check"]:Show()
-                            _G[button:GetName() .. "UnCheck"]:Hide()
                             return
                         end
                         monitorSaved.filters[filterRow.monitorKey] = 0
@@ -897,7 +894,7 @@ TJ.Init(function()
                 func = function()
                     monitorSaved.frameStrata = strata
                     monitorFrame:SetFrameStrata(strata)
-                    LibBG:CloseDropDownMenus()
+                    Menu:Close()
                 end,
             })
         end
@@ -912,7 +909,7 @@ TJ.Init(function()
                 func = function()
                     monitorSaved.scale = scale
                     monitorFrame:SetScale(scale)
-                    LibBG:CloseDropDownMenus()
+                    Menu:Close()
                 end,
             })
         end
@@ -927,7 +924,7 @@ TJ.Init(function()
                 notCheckable = true,
                 func = function()
                     monitorSaved.lock = monitorSaved.lock == 1 and 0 or 1
-                    LibBG:CloseDropDownMenus()
+                    Menu:Close()
                 end,
             },
             {
@@ -935,10 +932,10 @@ TJ.Init(function()
                 notCheckable = true,
                 func = function()
                     TJ.SetBuffMonitorShown(false)
-                    LibBG:CloseDropDownMenus()
+                    Menu:Close()
                 end,
             },
-            TJ.CreateDropDownSeparator(),
+            { separator = true },
             {
                 text = L["重置爆发药水记录"],
                 notCheckable = true,
@@ -946,7 +943,7 @@ TJ.Init(function()
                     if TJ.ResetBurstPotionMonitor then
                         TJ.ResetBurstPotionMonitor()
                     end
-                    LibBG:CloseDropDownMenus()
+                    Menu:Close()
                 end,
             },
             {
@@ -979,7 +976,7 @@ TJ.Init(function()
                 end,
             },
 
-            TJ.CreateDropDownSeparator(),
+            { separator = true },
             {
                 text = L["布局"],
                 isTitle = true,
@@ -991,7 +988,7 @@ TJ.Init(function()
                 func = function()
                     monitorSaved.layout = 1
                     UpdateMonitorLayout()
-                    LibBG:CloseDropDownMenus()
+                    Menu:Close()
                 end,
             },
             {
@@ -1000,7 +997,7 @@ TJ.Init(function()
                 func = function()
                     monitorSaved.layout = 2
                     UpdateMonitorLayout()
-                    LibBG:CloseDropDownMenus()
+                    Menu:Close()
                 end,
             },
             {
@@ -1009,16 +1006,16 @@ TJ.Init(function()
                 func = function()
                     monitorSaved.layout = 3
                     UpdateMonitorLayout()
-                    LibBG:CloseDropDownMenus()
+                    Menu:Close()
                 end,
             },
 
-            TJ.CreateDropDownSeparator(),
+            { separator = true },
             {
                 text = CANCEL,
                 notCheckable = true,
                 func = function()
-                    LibBG:CloseDropDownMenus()
+                    Menu:Close()
                 end,
             }
         }
@@ -1030,7 +1027,7 @@ TJ.Init(function()
                 end
             end
         end
-        LibBG:EasyMenu(menu, TJ.dropDown, "cursor", 0, 0, "MENU", 2)
+        Menu:Open(anchor, menu, { cursor = true, closeDelay = 2 })
     end
 
     -- 主界面
@@ -1063,7 +1060,7 @@ TJ.Init(function()
         end
 
         StartMonitorMoving = function()
-            LibBG.CloseDropDownMenus()
+            Menu:Close()
             monitorFrame.isMoving = true
             monitorFrame:StartMoving()
         end

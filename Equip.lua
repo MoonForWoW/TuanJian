@@ -1225,17 +1225,16 @@ TJ.Init(function()
         end
 
         if TJ.autoButton and not TJ.autoSetTeamOptionButton then
-            local dropDown = LibBG:Create_UIDropDownMenu(nil, TJ.MainFrame)
             local option = TJ.CreateButton(TJ.equipMainFrame)
             option:SetPoint("LEFT", TJ.autoButton, "RIGHT", 0, 0)
             option:SetSize(23, TJ.autoButton:GetHeight())
             option:SetText('▼')
             TJ.autoSetTeamOptionButton = option
-            LibBG:UIDropDownMenu_SetAnchor(dropDown, 0, 0, "BOTTOMLEFT", option, "TOPLEFT")
+            LibBG:UIDropDownMenu_SetAnchor(option, 0, 0, "BOTTOMLEFT", option, "TOPLEFT")
             option:SetScript("OnClick", function(self)
                 TJ.PlaySound(1)
-                if L_DropDownList1:IsVisible() and L_DropDownList1.dropdown == dropDown then
-                    L_DropDownList1:Hide()
+                if LibBG:IsOpen(self) then
+                    LibBG:Close()
                 else
                     local menu = {
                         {
@@ -1261,7 +1260,7 @@ TJ.Init(function()
                         end,
                     })
 
-                    LibBG:EasyMenu(menu, dropDown, self, 0, 0, "MENU", 5)
+                    LibBG:EasyMenu(menu, self, self, 0, 0, "MENU", 5)
                 end
             end)
         end

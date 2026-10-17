@@ -21,7 +21,7 @@ local logo = AddonName .. ': '
 
 TJ.Init(function()
     if not TJ.IsMOP then return end
-    
+
     local mainFrame = TJ.tjMainFrame
     local FB = "TJ"
     local bossIndex = 1
@@ -267,7 +267,7 @@ TJ.Init(function()
 
 
         function TJ.CreateMRT(parent, points, buttonName, points2, points3,
-                                dbName)
+                              dbName)
             local bt = CreateFrame("Button", nil, parent)
             bt:SetPoint(unpack(points))
             bt:SetNormalFontObject(TJ.FontGreen15)
@@ -309,8 +309,6 @@ TJ.Init(function()
     -- 保存方案
     local maxSave = 10
     do
-        local dropDown = LibBG:Create_UIDropDownMenu(nil, mainFrame)
-
         local bt = CreateFrame("Button", nil, mainFrame)
         bt:SetPoint("RIGHT", TJ.exportTJButton, "LEFT", -10, 0)
         bt:SetNormalFontObject(TJ.FontGreen15)
@@ -323,8 +321,8 @@ TJ.Init(function()
         TJ.loadTJButton = bt
         bt:SetScript("OnClick", function(self)
             TJ.PlaySound(1)
-            if TJ.DropDownListIsVisible(self) then
-                _G.L_DropDownList1:Hide()
+            if LibBG:IsOpen(self) then
+                LibBG:Close()
             else
                 local menu = {}
                 for i, v in ipairs(TuanJian.MOPTJ.history) do
@@ -332,18 +330,24 @@ TJ.Init(function()
                         text = L["%s、%s轮%s减伤 "]:format(i, v.num, v.type == "physics" and L["物理"] or L["魔法"]),
                         notCheckable = true,
                         arg1 = i,
+                        action = {
+                            icon = "interface/raidframe/readycheck-notready",
+                            size = 15,
+                            hoverOnly = true,
+                            tooltipTitle = L["删除该方案"],
+                            func = function(_, item)
+                                tremove(TuanJian.MOPTJ.history, item.arg1)
+                                LibBG:Close()
+                                TJ.loadTJButton:UpdateState()
+                                if next(TuanJian.MOPTJ.history) then TJ.loadTJButton:Click() end
+                            end,
+                        },
                         func = function()
                             bt:LoadTJ(v)
                         end
                     })
                 end
-                tinsert(menu,
-                    {
-                        text = "   ",
-                        isTitle = true,
-                        notCheckable = true,
-                    }
-                )
+                tinsert(menu, { separator = true, })
                 tinsert(menu,
                     {
                         text = CANCEL,
@@ -353,69 +357,9 @@ TJ.Init(function()
                         end,
                     }
                 )
-                LibBG:EasyMenu(menu, dropDown, self, 0, 0, "MENU", 2)
+                LibBG:EasyMenu(menu, self, self, 0, 0, "MENU", 2)
             end
         end)
-
-        for i = 1, L_UIDROPDOWNMENU_MAXBUTTONS do
-            local button = _G["L_DropDownList1Button" .. i]
-            button:HookScript("OnEnter", function()
-                if L_DropDownList1.dropdown ~= dropDown then return end
-                if not button.deleteTJ then
-                    local bt = CreateFrame("Button", nil, button)
-                    bt:SetSize(15, 15)
-                    bt:SetPoint("RIGHT", -2, 0)
-                    bt:SetNormalTexture("interface/raidframe/readycheck-notready")
-                    bt:SetHighlightTexture("interface/raidframe/readycheck-notready")
-                    bt:RegisterForClicks("AnyUp")
-                    bt.num = i
-                    bt:Hide()
-                    button.deleteTJ = bt
-                    bt:SetScript("OnClick", function(self)
-                        tremove(TuanJian.MOPTJ.history, self.arg1)
-                        LibBG:CloseDropDownMenus()
-                        TJ.loadTJButton:UpdateState()
-                        TJ.loadTJButton:Click()
-                    end)
-                    bt:SetScript("OnEnter", function(self)
-                        button.isOnEnter = true
-                        LibBG:UIDropDownMenu_StopCounting(self:GetParent():GetParent())
-                        button.Highlight:Show()
-                        GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0, 0)
-                        GameTooltip:ClearLines()
-                        GameTooltip:AddLine(L["删除该方案"], 1, 1, 1, true)
-                        GameTooltip:Show()
-                    end)
-                    bt:SetScript("OnLeave", function(self)
-                        LibBG:UIDropDownMenu_StartCounting(self:GetParent():GetParent())
-                        button.Highlight:Hide()
-                        GameTooltip:Hide()
-                    end)
-                    bt:SetScript("OnHide", function(self)
-                        self:Hide()
-                    end)
-                end
-                button.isOnEnter = true
-                for ii = 1, _G['L_DropDownList1'].numButtons do
-                    local bt = _G["L_DropDownList1Button" .. ii]
-                    if bt.deleteTJ then
-                        bt.deleteTJ:Hide()
-                    end
-                end
-                if button.arg1 then
-                    button.deleteTJ:Show()
-                end
-            end)
-            button:HookScript("OnLeave", function()
-                if L_DropDownList1.dropdown ~= dropDown then return end
-                button.isOnEnter = false
-                After(0, function()
-                    if not button.isOnEnter then
-                        button.deleteTJ:Hide()
-                    end
-                end)
-            end)
-        end
 
         function bt:SetEdit(db, name)
             for _, v in ipairs(TJ.frame[FB][bossIndex].all) do
@@ -462,7 +406,7 @@ TJ.Init(function()
                 self:Enable()
             end)
             TJ.PlaySound(2)
-            _G.L_DropDownList1:Hide()
+            LibBG:Close()
             local saveTbl = {
                 time = GetServerTime(),
                 num = TuanJian.MOPTJ.num,
@@ -493,5 +437,3 @@ TJ.Init(function()
 
     parent.UpdateShowCount()
 end)
-
-

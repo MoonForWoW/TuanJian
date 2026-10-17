@@ -38,24 +38,24 @@ TJ.Load[FB .. bossIndex] = function()
     TJ.autoRaidTargetInfo[instanceID][16168] = {
         [8] = true,
         [7] = true,
-        [6] = true,
         [5] = true,
+        [4] = true,
         np = true,
     }
     -- 黑暗战士（旋风斩）
     TJ.autoRaidTargetInfo[instanceID][16156] = {
         [8] = true,
         [7] = true,
-        [6] = true,
         [5] = true,
+        [4] = true,
         np = true,
     }
     -- 死灵骑士（奥爆）
     TJ.autoRaidTargetInfo[instanceID][16165] = {
         [8] = true,
         [7] = true,
-        [6] = true,
         [5] = true,
+        [4] = true,
         np = true,
     }
 

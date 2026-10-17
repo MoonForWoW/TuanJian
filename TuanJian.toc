@@ -4,7 +4,7 @@
 ## IconTexture: Interface\AddOns\TuanJian\Media\icon\icon.png
 ## Author: 苍穹之霜
 ## SavedVariables: TuanJian
-## Version: 2.2.4
+## Version: 2.2.5
 
 Templates.xml
 Libs\embeds.xml
@@ -33,6 +33,7 @@ Raid\CombatLog.lua
 Raid\Map.lua
 Raid\CombatFrame.lua
 Raid\CombatFrame2.lua
+Raid\CastRecords.lua
 Raid\Dispel.lua
 Raid\Board.lua
 Raid\BoardWA.lua
